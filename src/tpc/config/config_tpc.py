@@ -18,7 +18,8 @@ CHAIN_GRASPS = False
 """TABLE SETUP SPECIFIC VALUES"""
 
 labels = ["Screwdriver", "Scrap", "Tube", "Tape"] #ensure this matches server.py in hsr_web
-HUES_TO_BINS = {"cyan": 0 , "blue": 1, "green-yellow": 2, "green": 3, "yellow": 4, "red": 5, "orange": 6, "black": 7}
+# HUES_TO_BINS = {"cyan": 0 , "blue": 1, "green-yellow": 2, "green": 3, "yellow": 4, "red": 5, "orange": 6, "black": 7}
+HUES_TO_BINS = {'yellow':0, 'cyan': 1, 'red': 2}
 
 net_labels = {1: "Tube", 2: "Scrap", 3: "Screwdriver", 4: "Tape"}
 CONFIDENCE_THRESH = 0.3
@@ -33,9 +34,9 @@ NUM_ROBOTS_ON_NETWORK = 1
 #number of pixels apart to be singulated
 DIST_TOL = 5
 #background range for thresholding the image
-COLOR_TOL = 40
+COLOR_TOL = 34
 #number of pixels necssary for a cluster
-SIZE_TOL = 200
+SIZE_TOL = 50
 #amount to scale image down by to run algorithm (for speed)
 SCALE_FACTOR = 2
 

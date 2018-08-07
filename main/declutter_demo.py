@@ -13,11 +13,11 @@ from tpc.perception.crop import crop_img
 from tpc.perception.connected_components import get_cluster_info, merge_groups
 from tpc.perception.bbox import Bbox, find_isolated_objects_by_overlap, select_first_obj, format_net_bboxes, draw_boxes, find_isolated_objects_by_distance
 from tpc.manipulation.robot_actions import Robot_Actions
-# from tpc.data.helper import Helper
-# from tpc.data.data_logger import DataLogger
+from tpc.data.helper import Helper
+from tpc.data.data_logger import DataLogger
 import tpc.config.config_tpc as cfg
-from tpc.detection.detector import Detector
-from tpc.detection.maskrcnn_detection import detect
+# from tpc.detection.detector import Detector
+# from tpc.detection.maskrcnn_detection import detect
 
 if cfg.robot_name == "hsr":
     from core.hsr_robot_interface import Robot_Interface
@@ -26,8 +26,8 @@ elif cfg.robot_name == "fetch":
 elif cfg.robot_name is None:
     from tpc.offline.robot_interface import Robot_Interface
 
-# sys.path.append("hsr_web/")
-# from web_labeler import Web_Labeler
+sys.path.append("hsr_web/")
+from web_labeler import Web_Labeler
 
 import importlib
 img = importlib.import_module(cfg.IMG_MODULE)
@@ -43,21 +43,23 @@ then the robot executing the predicted motion
 
 class DeclutterDemo():
 
-    def __init__(self, maskrcnn=False):
+    def __init__(self, viz=False, maskrcnn=False):
         """
         Class that runs decluttering task
         """
         self.robot = Robot_Interface()
-        # self.helper = Helper(cfg)
+        # # self.helper = Helper(cfg)
         self.ra = Robot_Actions(self.robot)
-        # self.dl = DataLogger("stats_data/model_base", cfg.EVALUATE)
-        self.web = Web_Labeler(cfg.NUM_ROBOTS_ON_NETWORK)
+        # # self.dl = DataLogger("stats_data/model_base", cfg.EVALUATE)
+        # self.web = Web_Labeler(cfg.NUM_ROBOTS_ON_NETWORK)
 
-        self.maskrcnn = maskrcnn
-        if not self.maskrcnn:
-            model_path = 'main/model/output_inference_graph.pb'
-            label_map_path = 'main/model/object-detection.pbtxt'
-            self.det = Detector(model_path, label_map_path)
+        # self.maskrcnn = maskrcnn
+        # if not self.maskrcnn:
+        #     model_path = 'main/model/output_inference_graph.pb'
+        #     label_map_path = 'main/model/object-detection.pbtxt'
+        #     self.det = Detector(model_path, label_map_path)
+
+        self.viz = viz
 
         print("Finished Initialization")
 
@@ -139,6 +141,10 @@ class DeclutterDemo():
         to_grasp = []
         to_singulate = []
         for group in groups:
+            class_num = hsv_classify(col_img.mask_binary(group.mask))
+            color_name = class_num_to_name(class_num)
+            if color_name not in cfg.HUES_TO_BINS:
+                continue
             inner_groups = grasps_within_pile(col_img.mask_binary(group.mask))
 
             if len(inner_groups) == 0:
@@ -147,7 +153,8 @@ class DeclutterDemo():
                 for in_group in inner_groups:
                     class_num = hsv_classify(col_img.mask_binary(in_group.mask))
                     color_name = class_num_to_name(class_num)
-                    lego_class_num = cfg.HUES_TO_BINS[color_name]
+                    if color_name in cfg.HUES_TO_BINS:
+                        lego_class_num = cfg.HUES_TO_BINS[color_name]
                     to_grasp.append((in_group, lego_class_num, color_name))
         return to_grasp, to_singulate
 
@@ -216,50 +223,64 @@ class DeclutterDemo():
         demo that runs color based segmentation and declutters legos
         """
         self.ra.go_to_start_pose()
+        self.ra.set_start_position()
+        self.ra.head_start_pose()
         c_img, d_img = self.robot.get_img_data()
 
         while not (c_img is None or d_img is None):
-            main_mask = crop_img(c_img, arc=False, viz=False)
+            if self.viz:
+                path = 'debug_imgs/web.png'
+                cv2.imwrite(path, c_img)
+                time.sleep(2)
+
+            main_mask = crop_img(c_img, simple=True, arc=False, viz=self.viz)
             col_img = ColorImage(c_img)
             workspace_img = col_img.mask_binary(main_mask)
 
-            groups = run_connected_components(workspace_img, viz=True)
-
+            groups = run_connected_components(workspace_img, viz=self.viz)
             if len(groups) > 0:
 
                 to_grasp, to_singulate = self.find_grasps(groups, col_img)
-                grasp_success = 0.0
 
                 if len(to_grasp) > 0:
-                    grasp_success = 1.0
-                    singulation_time = 0.0
                     to_grasp.sort(key=lambda g:-1 * g[0].cm[0])
                     if not cfg.CHAIN_GRASPS:
                         to_grasp = to_grasp[0:1]
-                    display_grasps(workspace_img, [g[0] for g in to_grasp])
+                    if self.viz:
+                        display_grasps(workspace_img, [g[0] for g in to_grasp])
                     group = to_grasp[0][0]
                     label = to_grasp[0][1]
                     color = to_grasp[0][2]
                     print("Grasping a " + color + " lego")
+                    return
                     self.ra.execute_grasp(group.cm, group.dir, d_img, class_num=label)
-                    self.ra.go_back()
+                    print(self.ra.get_start_position(), self.ra.get_position())
+                    self.ra.go_to_start_pose()
+                    self.ra.move_to_start(x=False)
+                    return
+                    self.ra.deposit_obj(label)
                 else:
                     singulator = Singulation(col_img, main_mask, [g.mask for g in to_singulate])
                     self.run_singulate(singulator, d_img)
-                    sing_start = time.time()
-                    singulation_time = time.time() - sing_start
 
-                if cfg.EVALUATE:
-                    reward = self.helper.get_reward(grasp_success,singulation_time)
             else:
                 print("Cleared the workspace")
                 print("Add more objects, then resume")
                 IPython.embed()
 
-            self.ra.go_to_start_position()
-
+            self.ra.move_to_start()
             self.ra.go_to_start_pose()
+            self.ra.head_start_pose()
+
             c_img, d_img = self.robot.get_img_data()
+
+    def test(self):
+        c_img = cv2.imread('debug_imgs/web.png')
+        main_mask = crop_img(c_img, simple=True, arc=False, viz=self.viz)
+        col_img = ColorImage(c_img)
+        workspace_img = col_img.mask_binary(main_mask)
+        groups = run_connected_components(workspace_img, viz=self.viz)
+        to_grasp, to_singulate = self.find_grasps(groups, col_img)
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
@@ -267,9 +288,10 @@ if __name__ == "__main__":
     else:
         DEBUG = False
 
-    task = DeclutterDemo(maskrcnn=True)
-    simple = False
+    task = DeclutterDemo(viz=True)
+    simple = True
     if simple:
         task.lego_demo()
+        # task.test()
     else:
         task.tools_demo()

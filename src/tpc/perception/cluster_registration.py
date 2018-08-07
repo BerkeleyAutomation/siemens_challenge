@@ -27,8 +27,8 @@ def run_connected_components(img, viz=False):
     -------
     :obj:list of `Group`
     """
-
-    fg = img.foreground_mask(cfg.COLOR_TOL, ignore_black=True)
+    fg = img.subtract_background()
+    # fg = img.foreground_mask(cfg.COLOR_TOL, ignore_black=True)
     if viz:
         cv2.imwrite("debug_imgs/mask.png", fg.data)
 
@@ -257,6 +257,7 @@ def grasps_within_pile(color_mask):
             valid_pix = hue_pixels[block_color]
             obj_mask = focus_mask.mask_by_ind(np.array(valid_pix))
             individual_masks.append(obj_mask)
+
     if len(individual_masks) > 0:
         obj_focus_mask = individual_masks[0]
         for im in individual_masks[1:]:

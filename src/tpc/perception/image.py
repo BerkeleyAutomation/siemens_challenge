@@ -1159,6 +1159,22 @@ class ColorImage(Image):
         binary_im = BinaryImage(binary_data.astype(np.uint8), frame=self.frame)
         return binary_im
 
+    def subtract_background(self):
+        img = self.data
+        hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+
+        mask_red1 = cv2.inRange(hsv, (0, 200, 50), (20, 255, 255))
+        mask_red2 = cv2.inRange(hsv, (150, 200, 50), (180, 255, 255))
+        mask = mask_red1 + mask_red2
+
+        mask_blue = cv2.inRange(hsv, (75, 80, 50), (130, 255, 255))
+        mask += mask_blue
+
+        mask_yellow = cv2.inRange(hsv, (20, 150, 50), (40, 255, 255))
+        mask += mask_yellow
+        binary_im = BinaryImage(mask.astype(np.uint8), frame=self.frame)
+        return binary_im
+
     def background_model(self, ignore_black=True, use_hsv=False, scale=8):
         """Creates a background model for the given image. The background
         color is given by the modes of each channel's histogram.

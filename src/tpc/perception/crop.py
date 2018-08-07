@@ -75,11 +75,11 @@ def crop_img(img, use_preset=False, arc=True, viz=False, simple=False, bycoords=
     mask_shape = (img.shape[0], img.shape[1])
 
     if simple:
-        scale_factor = 20
-        to_chop = [mask_shape[i]/scale_factor for i in range(2)]
+        scale_factors = [10, 10]
+        to_chop = [mask_shape[0]/10, mask_shape[0]/10, mask_shape[1]/10, mask_shape[1]/10]
         #create mask
         focus_mask = np.zeros(mask_shape, dtype=np.uint8)
-        focus_mask[to_chop[0]:-to_chop[0],to_chop[1]:-to_chop[1]] = 255
+        focus_mask[to_chop[0]:-to_chop[1],to_chop[2]:-to_chop[3]] = 255
         return BinaryImage(focus_mask.astype("uint8"))
     if not (bycoords is None):
         focus_mask = np.zeros(mask_shape, dtype=np.uint8)
