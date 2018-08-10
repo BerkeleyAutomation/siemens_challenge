@@ -4,13 +4,15 @@
 
 Current working version of the simulator world/object model depends on **Gazebo 7.x** and **ros-kinetics**.
 
+Please make sure gazebo's default material and world database is installed under path `/usr/share/gazebo-7/`, or some materials in some of the world files would fail to load.
+
 *TODO: Change path dependent parts in code*
 
 ## Running simulation
 
 First of all, change path for world file inside `sim_world/filename.launch` to a viable path on your computer:
 
-For example for office_env.launch (Current working office environment)
+For example for `office_env.launch` (Current working office environment)
 ```
 <arg name="world_name" value="/home/zisu/simulator/siemens_challenge/sim_world/office_env.world" />
 ```
@@ -27,6 +29,10 @@ roslaunch office_env.launch
 
 And then you should see a world with hsr robot show up in Gazebo.
 
+`floor_plan.launch` opens a file that mimics the lab floor setup.
+
+None of the two world file is path dependent. 
+
 ### Creating a simulated environment
 
 You can start by copying the existing code in 
@@ -42,7 +48,7 @@ Be aware of the parameters you use for your environment: to support accurate nav
 ```
 name="use_laser_odom" value="true"
 ```
-in your launch file and make sure your environment is surrounded by obscures.
+in your launch file and make sure your environment is surrounded by obscures. In our case, building environments with walls is more ideal.
 
 ### Importing object models
 
@@ -58,6 +64,8 @@ to
 <uri>/usr/your_path/siemens_challenge/sim_world/toolbox/tape3.obj</uri>
 ```
 
+A parser is also created to automatically take care of this path change for you. Check a latter part of this instruction (Running simulation/Creating object models) for more information.
+
 #### Import object using GUI
 
 This can be done under "insert" tag if you are using Gazebo 7.x.
@@ -68,7 +76,15 @@ Every method you need for this is contained in `sim_world/spawn_object_script.py
 
 ### Creating object models
 
-`sim_world/toolbox/parser.py` can handle auto generation of object models out of existing .obj meshes inside the same folder. Note that this script requires trimesh; consider using a virtual env with python 3.4+ for that. 
+If you have both COLLADA and obj meshes for the same object, `sim_world/relavent_toolbox/parser.py` can handle auto generation of object models out of existing .dae and .obj meshes inside the same folder, assuming 1) they have the same filename 2) the two meshes and the script are in the same folder. If you want to use other object names, please change line 20 and 25 to import other .obj and .dae files respectively.
+
+#### Paint object meshes
+
+`sim_world/relavent_toolbox/painting_script.py` would go through all the .dae meshes in the same folder as the script and randomly paint them according to custom-specified scheme; please modify "color" field on line 23 if you want to use other schemes for generating colors. That field has to be a 3-float(0-1) tuple correspond to RGB values respectively. 
+
+Note that the script currently iterate through all the existing group of meshes and addon colors to it; if the mesh is of only one group, all painted meshes would turn out as a uniformed colored mesh.
+
+Note that this script requires trimesh; consider using a virtual env with python 3.4+ for that. 
 
 ## Existing demo and scripts
 
