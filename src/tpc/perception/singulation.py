@@ -106,9 +106,13 @@ class Singulation():
             1x2 array of the goal pixel
         """
         occupied_space = self.focus_mask.inverse()
+        new_mask = occupied_space.data
         for i in range(len(self.other_obj_masks)):
-            occupied_space += self.other_obj_masks[i]
-        occupied_space += self.obj_mask
+            new_mask += self.other_obj_masks[i].data
+            # occupied_space += self.other_obj_masks[i]
+        new_mask += self.obj_mask.data
+        # occupied_space += self.obj_mask
+        occupied_space = BinaryImage(new_mask.astype(np.uint8))
         goal_pixel = occupied_space.most_free_pixel()
         return goal_pixel
 
@@ -153,8 +157,8 @@ class Singulation():
             1x2 vector pointing in the direction in which the
             robot should singulate
         """
-        start_p = self.obj_mask.closest_zero_pixel(mean, -1*direction)
-        end_p = self.obj_mask.closest_zero_pixel(mean, direction)
+        start_p = self.obj_mask.closest_nonzero_pixel(mean, -1*direction)
+        end_p = self.obj_mask.closest_nonzero_pixel(mean, direction)
 
         #should be closer to goal pixel after border push than before it
         if np.linalg.norm(self.goal_p - start_p) < np.linalg.norm(self.goal_p - end_p):

@@ -261,7 +261,8 @@ def grasps_within_pile(color_mask):
     if len(individual_masks) > 0:
         obj_focus_mask = individual_masks[0]
         for im in individual_masks[1:]:
-            obj_focus_mask += im
+            new_mask = obj_focus_mask.data + im.data
+            obj_focus_mask = BinaryImage(new_mask.astype(np.uint8))
 
     #for each hsv block, again separate by connectivity
     all_groups = []

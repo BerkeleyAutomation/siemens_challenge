@@ -14,6 +14,7 @@ class Robot_Actions():
 
     def go_to_start_pose(self):
         self.robot.body_start_pose()
+        self.robot.close_gripper()
         self.safe_wait()
 
     def head_start_pose(self):
@@ -70,8 +71,10 @@ class Robot_Actions():
     def grasp_at_pose(self, pose_name):
         self.robot.open_gripper()
         self.robot.move_to_pose(pose_name, 0.1)
-        self.robot.move_to_pose(pose_name, 0.03)
+        self.robot.move_to_pose(pose_name, 0.022)
         self.robot.close_gripper()
+        self.robot.move_to_pose(pose_name, 0.1)
+        # self.robot.move_to_pose(pose_name, 0.2)
         # self.robot.move_to_pose(pose_name, 0.1)
 
     def deposit_obj(self, class_num):
@@ -96,8 +99,17 @@ class Robot_Actions():
                 print("Could not find AR marker- depositing object in default position.")
                 self.go_to_start_position(offsets=[-0.5, 0, 0])
 
+        self.move_base(x=0.1)
         self.robot.open_gripper()
         self.robot.close_gripper()
+        self.move_base(x=-0.1)
+
+    def deposit_in_cubby(self):
+        self.robot.move_in_cubby()
+        self.robot.open_gripper()
+        self.robot.close_gripper()
+        self.robot.body_neutral_pose()
+        self.robot.body_start_pose()
 
     def move_base(self, x=0, y=0, z=0):
         self.robot.move_base(x=x, y=y, z=z)
@@ -105,6 +117,14 @@ class Robot_Actions():
     def execute_grasp(self, cm, dir_vec, d_img, class_num):
         pose_name = self.img_coords2pose(cm, dir_vec, d_img)
         self.grasp_at_pose(pose_name)
+        # self.deposit_obj(class_num)
+
+    def spread_singulate(self, cm, dir_vec, d_img):
+        pose_name = self.img_coords2pose(cm, dir_vec, d_img)
+        self.robot.move_to_pose(pose_name, 0.06, y_offset=0.09)
+        self.robot.move_to_pose(pose_name, 0.022, y_offset=-0.05)
+        self.robot.move_to_pose(pose_name, 0.022, x_offset=0.1)
+        self.robot.move_to_pose(pose_name, 0.1)
         # self.deposit_obj(class_num)
 
     def execute_singulate(self, waypoints, rot, d_img):

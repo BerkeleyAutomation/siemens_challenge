@@ -19,7 +19,7 @@ CHAIN_GRASPS = False
 
 labels = ["Screwdriver", "Scrap", "Tube", "Tape"] #ensure this matches server.py in hsr_web
 # HUES_TO_BINS = {"cyan": 0 , "blue": 1, "green-yellow": 2, "green": 3, "yellow": 4, "red": 5, "orange": 6, "black": 7}
-HUES_TO_BINS = {'yellow':0, 'cyan': 1, 'red': 2}
+HUES_TO_BINS = {'red':0, 'cyan': 1, 'yellow': 2, 'orange': 2}
 
 net_labels = {1: "Tube", 2: "Scrap", 3: "Screwdriver", 4: "Tape"}
 CONFIDENCE_THRESH = 0.3

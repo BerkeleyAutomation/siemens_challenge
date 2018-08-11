@@ -141,10 +141,6 @@ class DeclutterDemo():
         to_grasp = []
         to_singulate = []
         for group in groups:
-            class_num = hsv_classify(col_img.mask_binary(group.mask))
-            color_name = class_num_to_name(class_num)
-            if color_name not in cfg.HUES_TO_BINS:
-                continue
             inner_groups = grasps_within_pile(col_img.mask_binary(group.mask))
 
             if len(inner_groups) == 0:
@@ -155,7 +151,7 @@ class DeclutterDemo():
                     color_name = class_num_to_name(class_num)
                     if color_name in cfg.HUES_TO_BINS:
                         lego_class_num = cfg.HUES_TO_BINS[color_name]
-                    to_grasp.append((in_group, lego_class_num, color_name))
+                        to_grasp.append((in_group, lego_class_num, color_name))
         return to_grasp, to_singulate
 
     def tools_demo(self):
@@ -222,6 +218,8 @@ class DeclutterDemo():
         """
         demo that runs color based segmentation and declutters legos
         """
+        hard_code = True
+
         self.ra.go_to_start_pose()
         self.ra.set_start_position()
         self.ra.head_start_pose()
@@ -238,9 +236,16 @@ class DeclutterDemo():
             workspace_img = col_img.mask_binary(main_mask)
 
             groups = run_connected_components(workspace_img, viz=self.viz)
-            if len(groups) > 0:
+            valid_groups = []
+            for group in groups:
+                class_num = hsv_classify(col_img.mask_binary(group.mask))
+                color_name = class_num_to_name(class_num)
+                if color_name in cfg.HUES_TO_BINS:
+                    valid_groups.append(group)
 
-                to_grasp, to_singulate = self.find_grasps(groups, col_img)
+            if len(valid_groups) > 0:
+
+                to_grasp, to_singulate = self.find_grasps(valid_groups, col_img)
 
                 if len(to_grasp) > 0:
                     to_grasp.sort(key=lambda g:-1 * g[0].cm[0])
@@ -248,20 +253,38 @@ class DeclutterDemo():
                         to_grasp = to_grasp[0:1]
                     if self.viz:
                         display_grasps(workspace_img, [g[0] for g in to_grasp])
+
                     group = to_grasp[0][0]
                     label = to_grasp[0][1]
                     color = to_grasp[0][2]
-                    print("Grasping a " + color + " lego")
-                    return
+                    print("Grasping a " + color + " lego", label)
                     self.ra.execute_grasp(group.cm, group.dir, d_img, class_num=label)
                     print(self.ra.get_start_position(), self.ra.get_position())
-                    self.ra.go_to_start_pose()
-                    self.ra.move_to_start(x=False)
-                    return
-                    self.ra.deposit_obj(label)
+                    self.robot.body_neutral_pose()
+                    # self.ra.go_to_start_pose()
+                    self.ra.move_to_start()
+                    if hard_code:
+                        if label == 2:
+                            self.ra.move_base(x=-0.6)
+                        if label == 1:
+                            self.ra.move_base(x=-0.3)
+                        self.ra.move_base(z=-1.6)
+                        # self.robot.body_neutral_pose()
+                        self.ra.deposit_in_cubby()
+                        self.ra.move_base(z=1.6)
+                        if label == 2:
+                            self.ra.move_base(x=0.6)
+                        if label == 1:
+                            self.ra.move_base(x=0.3)
+                    else:
+                        self.ra.deposit_obj(label)
                 else:
-                    singulator = Singulation(col_img, main_mask, [g.mask for g in to_singulate])
-                    self.run_singulate(singulator, d_img)
+                    # singulator = Singulation(col_img, main_mask, [g.mask for g in to_singulate])
+                    # self.run_singulate(singulator, d_img)
+                    # self.ra.go_to_start_pose()
+                    print('Singulating')
+                    group = valid_groups[0]
+                    self.ra.spread_singulate(group.cm, group.dir, d_img)
 
             else:
                 print("Cleared the workspace")
