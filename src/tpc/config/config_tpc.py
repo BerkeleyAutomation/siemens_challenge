@@ -19,7 +19,7 @@ CHAIN_GRASPS = False
 
 labels = ["Screwdriver", "Scrap", "Tube", "Tape"] #ensure this matches server.py in hsr_web
 # HUES_TO_BINS = {"cyan": 0 , "blue": 1, "green-yellow": 2, "green": 3, "yellow": 4, "red": 5, "orange": 6, "black": 7}
-HUES_TO_BINS = {'red':0, 'cyan': 1, 'yellow': 2, 'orange': 2}
+HUES_TO_BINS = {'red':0, 'cyan': 1, 'yellow': 2, 'orange': 0}
 
 net_labels = {1: "Tube", 2: "Scrap", 3: "Screwdriver", 4: "Tape"}
 CONFIDENCE_THRESH = 0.3
@@ -32,7 +32,7 @@ NUM_ROBOTS_ON_NETWORK = 1
 """EMPIRICALLY TUNED PARAMETERs"""
 #CONENCTED COMPONENTS ALG PARAMETERS
 #number of pixels apart to be singulated
-DIST_TOL = 5
+DIST_TOL = 7
 #background range for thresholding the image
 COLOR_TOL = 34
 #number of pixels necssary for a cluster

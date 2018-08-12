@@ -260,22 +260,31 @@ class DeclutterDemo():
                     print("Grasping a " + color + " lego", label)
                     self.ra.execute_grasp(group.cm, group.dir, d_img, class_num=label)
                     print(self.ra.get_start_position(), self.ra.get_position())
-                    self.robot.body_neutral_pose()
-                    # self.ra.go_to_start_pose()
+                    # self.robot.body_neutral_pose()
+                    self.ra.go_to_start_pose()
                     self.ra.move_to_start()
                     if hard_code:
                         if label == 2:
-                            self.ra.move_base(x=-0.6)
+                            self.ra.move_base(x=-0.4)
+                            self.ra.move_base(z=-1.6)
                         if label == 1:
-                            self.ra.move_base(x=-0.3)
-                        self.ra.move_base(z=-1.6)
+                            self.ra.move_base(z=-1.7)
+                        if label == 0:
+                            self.ra.move_base(z=-1.1)
+                        # self.ra.move_base(z=-1.6)
                         # self.robot.body_neutral_pose()
+                        self.robot.body_neutral_pose()
                         self.ra.deposit_in_cubby()
-                        self.ra.move_base(z=1.6)
+                        # self.ra.move_base(z=1.6)
                         if label == 2:
-                            self.ra.move_base(x=0.6)
+                            # self.ra.move_base(x=0.6)
+                            self.ra.move_base(z=1.6)
+                            self.ra.move_base(x=0.4)
                         if label == 1:
-                            self.ra.move_base(x=0.3)
+                            # self.ra.move_base(x=0.3)
+                            self.ra.move_base(z=1.7)
+                        if label == 0:
+                            self.ra.move_base(z=1.1)
                     else:
                         self.ra.deposit_obj(label)
                 else:

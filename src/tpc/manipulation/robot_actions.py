@@ -14,11 +14,12 @@ class Robot_Actions():
 
     def go_to_start_pose(self):
         self.robot.body_start_pose()
-        self.robot.close_gripper()
+        # self.robot.close_gripper()
         self.safe_wait()
 
     def head_start_pose(self):
         self.robot.head_start_pose()
+        self.safe_wait()
         self.safe_wait()
 
     def go_to_start_position(self, offsets=None):
