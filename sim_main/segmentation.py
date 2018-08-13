@@ -14,7 +14,7 @@ from scipy.spatial import Delaunay
 
 import math
 
-SEG_LABELS = {"screwdriver":0, "tape":1, "tube":2, "scrap":3, "hammer":4, "wrench":5, "background":6}
+SEG_LABELS = {"lightbulb": 0, "gear": 1, "nozzle": 2, "screwdriver": 3, "tape": 4, "barClamp": 5, "combinationWrench": 6, "hammer": 7, "openEndWrench": 8, "socketWrench": 9, "adjustableWrench": 10, "tube": 11, "cup":12, "mug":13, "bottle":14, "background":15}
 
 def alpha_shape(points, alpha):
 	"""

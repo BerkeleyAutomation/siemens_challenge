@@ -28,8 +28,8 @@ from gazebo_msgs.srv import DeleteModel, SpawnModel, GetWorldProperties, SetPhys
 import gazebo_msgs.msg
 from std_msgs.msg import Float64
 
-# from segmentation import *
-from segmentation_rgb import *
+from segmentation import *
+# from segmentation_rgb import *
 
 def depth_scaled_to_255(img):
 	img = 255.0/np.max(img)*img
@@ -62,8 +62,8 @@ class DataCollection():
 
 	def collect(self, dataset_size=100, start=0):
 
-		IMDIR = 'sim_data/dataset_08_02_2018/'
-		# IMDIR = 'sim_data/test_rgb/'
+		# IMDIR = 'sim_data/dataset_08_06_2018/'
+		IMDIR = 'sim_data/test/'
 
 		i = 0
 
@@ -108,27 +108,27 @@ class DataCollection():
 				json.dump(labels, f)
 
 			find_item_masks(IMDIR+str(i+start))
-			# compare, diff, seg_image, bb_image = draw_masks(IMDIR+str(i+start))
+			compare, diff, seg_image, bb_image = draw_masks(IMDIR+str(i+start))
 
 
 
-			# if diff > 640*480/1:
-			# 	os.remove(IMDIR+'/rgb_{}.png'.format(str(i+start)))
-			# 	os.remove(IMDIR+'/depth_{}.png'.format(str(i+start)))
-			# else:
-			# 	cv2.imwrite(IMDIR+'/compare_{}.png'.format(str(i+start)), compare)
-			# 	cv2.imwrite(IMDIR+'/seg_{}.png'.format(str(i+start)), seg_image)
-			# 	cv2.imwrite(IMDIR+'/bb_{}.png'.format(str(i+start)), bb_image)
-			# 	create_segment_label(IMDIR, str(i+start))
+			if diff > 640*480/300:
+				os.remove(IMDIR+'/rgb_{}.png'.format(str(i+start)))
+				os.remove(IMDIR+'/depth_{}.png'.format(str(i+start)))
+			else:
+				cv2.imwrite(IMDIR+'/compare_{}.png'.format(str(i+start)), compare)
+				cv2.imwrite(IMDIR+'/seg_{}.png'.format(str(i+start)), seg_image)
+				cv2.imwrite(IMDIR+'/bb_{}.png'.format(str(i+start)), bb_image)
+				create_segment_label(IMDIR, str(i+start))
 
-			# shutil.rmtree(IMDIR+str(i+start))
+			shutil.rmtree(IMDIR+str(i+start))
 			time.sleep(0.5)
 
 			
 
-			# if diff <= 640*480/1:
-			# 	i+=1
-			i += 1
+			if diff <= 640*480/300:
+				i+=1
+			# i += 1
 
 			
 
@@ -141,7 +141,7 @@ class DataCollection():
 
 
 if __name__ == "__main__":
-	DataCollection().collect(dataset_size=10000, start=0)
+	DataCollection().collect(dataset_size=10000, start=56)
 
 
 

@@ -6,17 +6,11 @@ import random
 import numpy as np
 import re
 
-LIMIT = {'x':(-0.2, 0.2), 'y':(0.8, 1.2), 'rad':(0, 3.14)}
-# QUATER = tf.transformations.quaternion_from_euler(0,0,0)
-# ORIENT = Quaternion(QUATER[0], QUATER[1], QUATER[2], QUATER[3])
+LIMIT = {'x':(-0.2, 0.2), 'y':(0.8, 1.2), 'rad':(0, 2*3.14)}
 
 MODEL_PATH = "/home/zisu/simulator/siemens_challenge/sim_world/toolbox/"
-# MODEL_LIST = ["screwdriver1", "screwdriver2", "screwdriver3", "screwdriver4", "screwdriver5", "tape2", "tape3", "tube1", "hammer1", "wrench1"]#, "scrap1"]
 
-MODEL_TYPE = {"lightbulb": 1, "gear": 2, "shoe": 3, "pear": 1, "nozzle": 1, "dolphin": 1, "bowl": 3, "screwdriver": 9, "mug": 3, "tape": 2, "can": 2, "bottle": 9, "elephant": 4, "barClamp": 1, "banana": 1, "scrap": 1, "combinationWrench": 15, "hammer": 1, "openEndWrench": 3, "socketwrench": 3, "adjustableWrench": 4, "hexagonalCylinder": 3, "cylinder": 26, "rectangularCube": 47, "cat": 2, "doll": 2, "cube": 1, "milkPitcher": 1, "fish": 1, "juiceBox": 1, "heart": 1, "ellipticalCylinder": 1, "oilCan": 2, "moon": 1, "pitcher": 1, "pony": 1, "seal": 1, "shampooBottle": 2, "tube": 1, "tortoise": 1}
-
-# MODEL_LIST = ["screwdriver1", "screwdriver2", "screwdriver3", "screwdriver4", "screwdriver5", "tape2", "tape3", "tube1", "wrench1"]
-# MODEL_TYPE = ["screwdriver", "tape", "tube", "scrap", "wrench"]
+MODEL_TYPE = {"lightbulb": 1, "gear": 2, "nozzle": 1, "screwdriver": 9, "tape": 2, "barClamp": 1, "combinationWrench": 15, "hammer": 1, "openEndWrench": 3, "socketWrench": 3, "adjustableWrench": 4, "tube": 1, "bottle": 9, "cup": 1, "mug": 3}
 
 
 def setup_delete_spawn_service():
@@ -67,7 +61,7 @@ def spawn_from_uniform(n, spawn_model):
         # item
         model_tag = random.choice(MODEL_TYPE.keys())
         model_index = random.choice(range(1, MODEL_TYPE[model_tag]+1))
-        model_paint = random.choice([0, 1])
+        model_paint = random.choice(range(5))
 
         with open(MODEL_PATH+model_tag+str(model_index)+"_"+str(model_paint)+"/model.sdf", "r") as f:
             object_xml = f.read()
@@ -84,7 +78,7 @@ def spawn_from_uniform(n, spawn_model):
         object_pose = Pose(Point(x=pt_x, y=pt_y, z=0.5), orient)
 
         # spawn
-        object_name = model_tag+"_"+str(i)
+        object_name = model_tag+str(model_index)+"_"+str(model_paint) +"_" +str(i)
         rospy.wait_for_service("gazebo/spawn_sdf_model")
         spawn_model(object_name, object_xml, "", object_pose, "world")
         rospy.sleep(0.5)
