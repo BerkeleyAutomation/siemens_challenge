@@ -22,7 +22,6 @@ elif cfg.robot_name == "fetch":
 elif cfg.robot_name is None:
     from tpc.offline.robot_interface import Robot_Interface
 
-sys.path.append('/home/zisu/simulator/siemens_challenge/sim_world')
 from spawn_object_script import *
 from gazebo_msgs.srv import DeleteModel, SpawnModel, GetWorldProperties, SetPhysicsProperties
 import gazebo_msgs.msg
