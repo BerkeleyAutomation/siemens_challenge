@@ -74,6 +74,8 @@ This can be done under "insert" tag if you are using Gazebo 7.x.
 
 Every method you need for this is contained in `sim_world/spawn_object_script.py`; please refer to the documentation and also the main function of that file for particular usage.
 
+Note that the exact path to the target object folder to use the script: line 11 variable `MODEL_PATH` should contain the correct absolute path to the target folder with object models; line 13 `MODEL_TYPE` should contain a dictionary of key:classname and value:count. Every mesh in the path should be named as [classname]+[id(starting from 1)]+_+[painted version(starting from 0)] to allow the script run properly. 
+
 ### Creating object models
 
 If you have both COLLADA and obj meshes for the same object, `sim_world/relavent_toolbox/parser.py` can handle auto generation of object models out of existing .dae and .obj meshes inside the same folder, assuming 1) they have the same filename 2) the two meshes and the script are in the same folder. If you want to use other object names, please change line 20 and 25 to import other .obj and .dae files respectively.
@@ -84,7 +86,7 @@ If you have both COLLADA and obj meshes for the same object, `sim_world/relavent
 
 Note that the script currently iterate through all the existing group of meshes and addon colors to it; if the mesh is of only one group, all painted meshes would turn out as a uniformed colored mesh.
 
-Note that this script requires trimesh; consider using a virtual env with python 3.4+ for that. 
+Note that this script requires trimesh. 
 
 ## Existing demo and scripts
 
@@ -121,6 +123,20 @@ sim_img_seg/
 -- rgb_[max timstamp].xml
 ```
 where `rgb_[timstamp]` and `depth_[timstamp]` are the images we are investigating. The rest of the images are included for debugging purposes.
+
+Import `segmentation` if collecting data on white background; if collecting data on a floorplan, import `segmentation_rgb`(under testing)
+
+#### Remarks
+
+To run datacollection properly, three variables should be properly taken care of: 
+
+1. `spawn_object_script.py` line 11 variable `MODEL_PATH` should contain the correct absolute path pointing to the folder with the object models
+
+2. `spawn_object_script.py` line 13 variable `MODEL_TYPE` should contain a dictionary of key:classname and value:count
+
+3. `segmentation.py`/`segmentation_rgb.py` line 17 `SEG_LABELS` should contain a dictionary of key:classname and value:pixel value assigned to that class.
+
+
 
 ## Misc
 
