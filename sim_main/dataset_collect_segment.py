@@ -61,8 +61,10 @@ class DataCollection():
 
 	def collect(self, dataset_size=100, start=0):
 
-		# IMDIR = 'sim_data/dataset_08_06_2018/'
-		IMDIR = 'sim_data/test/'
+		IMDIR = 'sim_data/dataset_08_013_2018/'
+		if not os.path.exists(IMDIR):
+			os.makedirs(IMDIR)
+		# IMDIR = 'sim_data/test/'
 
 		i = 0
 
@@ -140,7 +142,7 @@ class DataCollection():
 
 
 if __name__ == "__main__":
-	DataCollection().collect(dataset_size=10000, start=56)
+	DataCollection().collect(dataset_size=10000, start=0)
 
 
 
