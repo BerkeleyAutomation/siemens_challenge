@@ -122,9 +122,9 @@ class Robot_Actions():
 
     def spread_singulate(self, cm, dir_vec, d_img):
         pose_name = self.img_coords2pose(cm, dir_vec, d_img)
-        self.robot.move_to_pose(pose_name, 0.06, y_offset=0.09)
-        self.robot.move_to_pose(pose_name, 0.022, y_offset=-0.05)
-        self.robot.move_to_pose(pose_name, 0.022, x_offset=0.1)
+        self.robot.move_to_pose(pose_name, 0.06, y_offset=-0.09)
+        self.robot.move_to_pose(pose_name, 0.022, y_offset=0.04)
+        self.robot.move_to_pose(pose_name, 0.022, x_offset=0.07)
         self.robot.move_to_pose(pose_name, 0.1)
         # self.deposit_obj(class_num)
 

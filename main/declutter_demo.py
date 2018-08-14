@@ -252,21 +252,25 @@ class DeclutterDemo():
                     if not cfg.CHAIN_GRASPS:
                         to_grasp = to_grasp[0:1]
                     if self.viz:
-                        display_grasps(workspace_img, [g[0] for g in to_grasp])
+                        display_grasps(workspace_img, [g[0] for g in to_grasp], name="debug_imgs/grasp")
 
                     group = to_grasp[0][0]
                     label = to_grasp[0][1]
                     color = to_grasp[0][2]
                     print("Grasping a " + color + " lego", label)
-                    self.ra.execute_grasp(group.cm, group.dir, d_img, class_num=label)
+                    try:
+                        self.ra.execute_grasp(group.cm, group.dir, d_img, class_num=label)
+                    except Exception as ex:
+                        print(ex)
                     print(self.ra.get_start_position(), self.ra.get_position())
-                    # self.robot.body_neutral_pose()
-                    self.ra.go_to_start_pose()
+                    self.robot.body_neutral_pose()
+                    # self.ra.go_to_start_pose()
                     self.ra.move_to_start()
                     if hard_code:
                         if label == 2:
-                            self.ra.move_base(x=-0.4)
-                            self.ra.move_base(z=-1.6)
+                            self.ra.move_base(z=-2.3)
+                            # self.ra.move_base(x=-0.4)
+                            # self.ra.move_base(z=-1.6)
                         if label == 1:
                             self.ra.move_base(z=-1.7)
                         if label == 0:
@@ -278,22 +282,30 @@ class DeclutterDemo():
                         # self.ra.move_base(z=1.6)
                         if label == 2:
                             # self.ra.move_base(x=0.6)
-                            self.ra.move_base(z=1.6)
-                            self.ra.move_base(x=0.4)
+                            # self.ra.move_base(z=1.6)
+                            # self.ra.move_base(x=0.4)
+                            self.ra.move_base(z=2.3)
                         if label == 1:
                             # self.ra.move_base(x=0.3)
                             self.ra.move_base(z=1.7)
                         if label == 0:
                             self.ra.move_base(z=1.1)
                     else:
-                        self.ra.deposit_obj(label)
+                        try:
+                            self.ra.deposit_obj(label)
+                        except Exception as ex:
+                            print(ex)
                 else:
                     # singulator = Singulation(col_img, main_mask, [g.mask for g in to_singulate])
                     # self.run_singulate(singulator, d_img)
                     # self.ra.go_to_start_pose()
                     print('Singulating')
                     group = valid_groups[0]
-                    self.ra.spread_singulate(group.cm, group.dir, d_img)
+                    try:
+                        self.ra.spread_singulate(group.cm, group.dir, d_img)
+                    except Exception as ex:
+                        print(ex)
+                    self.ra.go_to_start_pose()
 
             else:
                 print("Cleared the workspace")
@@ -301,7 +313,7 @@ class DeclutterDemo():
                 IPython.embed()
 
             self.ra.move_to_start()
-            self.ra.go_to_start_pose()
+            # self.ra.go_to_start_pose()
             self.ra.head_start_pose()
 
             c_img, d_img = self.robot.get_img_data()

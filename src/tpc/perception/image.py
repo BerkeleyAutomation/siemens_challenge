@@ -1163,14 +1163,14 @@ class ColorImage(Image):
         img = self.data
         hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 
-        mask_red1 = cv2.inRange(hsv, (0, 100, 50), (20, 255, 255))
+        mask_red1 = cv2.inRange(hsv, (0, 100, 50), (5, 255, 255))
         mask_red2 = cv2.inRange(hsv, (150, 100, 50), (180, 255, 255))
         mask = mask_red1 + mask_red2
 
         mask_blue = cv2.inRange(hsv, (75, 100, 50), (130, 255, 255))
         mask += mask_blue
 
-        mask_yellow = cv2.inRange(hsv, (20, 150, 50), (40, 255, 255))
+        mask_yellow = cv2.inRange(hsv, (15, 100, 50), (40, 255, 255))
         mask += mask_yellow
         binary_im = BinaryImage(mask.astype(np.uint8), frame=self.frame)
         return binary_im
