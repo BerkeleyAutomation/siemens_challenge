@@ -15,8 +15,8 @@ from scipy.spatial import Delaunay
 import math
 import copy
 
-CLASS_MAP = {"bowl":"cup", "mug":"cup", "barClamp":"gearParts", "gear":"gearParts", "nozzle":"gearParts", "apple":"fruit", "banana":"fruit", "pear":"fruit", "dolphin":"toy", "elephant":"toy", "adjustableWrench":"wrench", "combinationWrench":"wrench", "openEndWrench":"wrench", "socketWrench":"wrench", "lightbulb":"utility", "pen":"utility", "alarmClock":"utility", "shoe":"utility", "duplo":"utility", "grape":"fruit", "rectangularCube":"utility"}
-SEG_LABELS = {"utility":0, "bottle":1, "cup":2, "fruit":3, "gearParts":4, "hammer":5, "scissors":6, "screwdriver":7, "tape":8, "toy":9, "tube":10, "wrench":11, "background":12}
+CLASS_MAP = {"bowl":"cup", "mug":"cup", "barClamp":"assemblyPart", "gear":"assemblyPart", "nozzle":"assemblyPart", "apple":"fruit", "banana":"fruit", "pear":"fruit", "dolphin":"toy", "elephant":"toy", "adjustableWrench":"wrench", "combinationWrench":"wrench", "openEndWrench":"wrench", "socketWrench":"wrench", "lightbulb":"utility", "pen":"utility", "alarmClock":"utility", "shoe":"utility", "duplo":"assemblyPart", "grape":"fruit", "rectangularCube":"utility"}
+SEG_LABELS = {"utility":0, "bottle":1, "cup":2, "fruit":3, "assemblyPart":4, "hammer":5, "scissors":6, "screwdriver":7, "tape":8, "toy":9, "tube":10, "wrench":11, "background":12}
 
 def alpha_shape(points, alpha):
 	"""
