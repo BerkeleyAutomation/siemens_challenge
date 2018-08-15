@@ -59,22 +59,38 @@ class DataCollection():
 		time.sleep(2)
 
 
-	def collect(self, dataset_size=100, start=0):
+	def collect(self, dataset_size=1000):
 
 		IMDIR = 'sim_data/dataset_08_013_2018/'
 		if not os.path.exists(IMDIR):
 			os.makedirs(IMDIR)
 		# IMDIR = 'sim_data/test/'
+		if not os.path.exists(IMDIR+"bb_labels"):
+			os.makedirs(IMDIR+"bb_labels")
+		if not os.path.exists(IMDIR+"bbs"):
+			os.makedirs(IMDIR+"bbs")
+		if not os.path.exists(IMDIR+"gt"):
+			os.makedirs(IMDIR+"gt")
+		if not os.path.exists(IMDIR+"image_depth"):
+			os.makedirs(IMDIR+"image_depth")
+		if not os.path.exists(IMDIR+"image_labels"):
+			os.makedirs(IMDIR+"image_labels")
+		if not os.path.exists(IMDIR+"image_rgb"):
+			os.makedirs(IMDIR+"image_rgb")
+		if not os.path.exists(IMDIR+"json_labels"):
+			os.makedirs(IMDIR+"json_labels")
+
+		start = len([x for x in os.listdir(IMDIR+"image_rgb") if 'png' in x])
 
 		i = 0
 
 		while i < dataset_size:
 			print(i+start)
 			
-			if not os.path.exists(IMDIR+str(i+start)):
-				os.makedirs(IMDIR+str(i+start))
+			# if not os.path.exists(IMDIR+str(i+start)):
+			# 	os.makedirs(IMDIR+str(i+start))
 
-			n = np.random.randint(5, 10)
+			n = np.random.randint(1, 30)
 
 			spawn_from_uniform(n, self.sm)
 			
@@ -85,44 +101,48 @@ class DataCollection():
 			
 			time.sleep(0.1)
 
+			img_lst = []
+
 			for j in range(len(labels)):
 				
 				c_img, d_img = self.robot.get_img_data()
 				delete_object(labels[len(labels) - 1 - j], self.dm)
-				cv2.imwrite(IMDIR+str(i+start)+'/rgb_{}.png'.format(str(len(labels) -1- j)), c_img)
-				cv2.imwrite(IMDIR+str(i+start)+'/depth_{}.png'.format(str(len(labels) -1- j)), depth_scaled_to_255(np.array((d_img * 1000).astype(np.int16))))
+				img_lst.insert(0, c_img)
+				# cv2.imwrite(IMDIR+str(i+start)+'/rgb_{}.png'.format(str(len(labels) -1- j)), c_img)
+				# cv2.imwrite(IMDIR+str(i+start)+'/depth_{}.png'.format(str(len(labels) -1- j)), depth_scaled_to_255(np.array((d_img * 1000).astype(np.int16))))
 				if j == 0:
-					cv2.imwrite(IMDIR+'/rgb_{}.png'.format(str(i+start)), c_img)
-					cv2.imwrite(IMDIR+'/depth_{}.png'.format(str(i+start)), depth_scaled_to_255(np.array((d_img * 1000).astype(np.int16))))
+					cv2.imwrite(IMDIR+'image_rgb/rgb_{}.png'.format(str(i+start)), c_img)
+					cv2.imwrite(IMDIR+'image_depth/depth_{}.png'.format(str(i+start)), depth_scaled_to_255(np.array((d_img * 1000).astype(np.int16))))
+					all_items = c_img
 
 			clean_floor(self.dm, self.om)
 			time.sleep(0.1)
 
-			c_img, d_img = self.robot.get_img_data()
+			# c_img, d_img = self.robot.get_img_data()
 
-			cv2.imwrite(IMDIR+str(i+start)+'/rgb_background.png', c_img)
-			cv2.imwrite(IMDIR+str(i+start)+'/depth_background.png', depth_scaled_to_255(np.array((d_img * 1000).astype(np.int16))))
+			# cv2.imwrite(IMDIR+str(i+start)+'/rgb_background.png', c_img)
+			# cv2.imwrite(IMDIR+str(i+start)+'/depth_background.png', depth_scaled_to_255(np.array((d_img * 1000).astype(np.int16))))
 			# print(np.array((d_img * 1000).astype(np.int16)).dtype)
 
 			
-			with open(IMDIR+str(i+start)+"/labels.json", 'w') as f:
-				json.dump(labels, f)
+			# with open(IMDIR+str(i+start)+"/labels.json", 'w') as f:
+			# 	json.dump(labels, f)
 
-			find_item_masks(IMDIR+str(i+start))
-			compare, diff, seg_image, bb_image = draw_masks(IMDIR+str(i+start))
+			mask_lst = find_item_masks(img_lst, labels)
+			compare, diff, seg_image, bb_image = draw_masks(mask_lst, all_items, labels)
 
 
 
 			if diff > 640*480/300:
-				os.remove(IMDIR+'/rgb_{}.png'.format(str(i+start)))
-				os.remove(IMDIR+'/depth_{}.png'.format(str(i+start)))
+				os.remove(IMDIR+'image_rgb/rgb_{}.png'.format(str(i+start)))
+				os.remove(IMDIR+'image_depth/depth_{}.png'.format(str(i+start)))
 			else:
-				cv2.imwrite(IMDIR+'/compare_{}.png'.format(str(i+start)), compare)
-				cv2.imwrite(IMDIR+'/seg_{}.png'.format(str(i+start)), seg_image)
-				cv2.imwrite(IMDIR+'/bb_{}.png'.format(str(i+start)), bb_image)
-				create_segment_label(IMDIR, str(i+start))
+				cv2.imwrite(IMDIR+'gt/compare_{}.png'.format(str(i+start)), compare)
+				cv2.imwrite(IMDIR+'image_labels/seg_{}.png'.format(str(i+start)), seg_image)
+				cv2.imwrite(IMDIR+'bbs/bb_{}.png'.format(str(i+start)), bb_image)
+				create_segment_label(IMDIR, str(i+start), labels, mask_lst)
 
-			shutil.rmtree(IMDIR+str(i+start))
+			# shutil.rmtree(IMDIR+str(i+start))
 			time.sleep(0.5)
 
 			
@@ -142,7 +162,7 @@ class DataCollection():
 
 
 if __name__ == "__main__":
-	DataCollection().collect(dataset_size=10000, start=0)
+	DataCollection().collect(dataset_size=10000)
 
 
 

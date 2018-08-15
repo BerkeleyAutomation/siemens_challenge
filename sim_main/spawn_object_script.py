@@ -10,7 +10,7 @@ LIMIT = {'x':(-0.2, 0.2), 'y':(0.8, 1.2), 'rad':(0, 2*3.14)}
 
 MODEL_PATH = "/home/zisu/simulator/siemens_challenge/sim_world/toolbox/"
 
-MODEL_TYPE = {"lightbulb": 1, "gear": 2, "nozzle": 1, "screwdriver": 9, "tape": 2, "barClamp": 1, "combinationWrench": 15, "hammer": 1, "openEndWrench": 3, "socketWrench": 3, "adjustableWrench": 4, "tube": 1, "bottle": 9, "cup": 1, "mug": 3, "alarmClock":1, "bowl":1, "dolphin":1, "elephant":1, "pear":1, "pen":1, "scissors":2, "shoe":3, "apple":1, "banana":1}
+MODEL_TYPE = {"lightbulb": 1, "gear": 2, "nozzle": 1, "screwdriver": 9, "tape": 2, "barClamp": 1, "combinationWrench": 15, "hammer": 1, "openEndWrench": 3, "socketWrench": 3, "adjustableWrench": 4, "tube": 1, "bottle": 9, "cup": 1, "mug": 3, "alarmClock":1, "bowl":1, "dolphin":1, "elephant":1, "pear":1, "pen":2, "scissors":2, "shoe":3, "apple":1, "banana":1, "duplo":5, "grape":1, "rectangularCube":3}
 
 
 def setup_delete_spawn_service():
@@ -62,8 +62,9 @@ def spawn_from_uniform(n, spawn_model):
         model_tag = random.choice(MODEL_TYPE.keys())
         model_index = random.choice(range(1, MODEL_TYPE[model_tag]+1))
         model_paint = random.choice(range(5))
+        model_scale = random.choice(range(5))
 
-        with open(MODEL_PATH+model_tag+str(model_index)+"_"+str(model_paint)+"/model.sdf", "r") as f:
+        with open(MODEL_PATH+model_tag+str(model_index)+"_"+str(model_paint)+"_"+str(model_scale)+"/model.sdf", "r") as f:
             object_xml = f.read()
 
         # pose
@@ -78,37 +79,37 @@ def spawn_from_uniform(n, spawn_model):
         object_pose = Pose(Point(x=pt_x, y=pt_y, z=0.5), orient)
 
         # spawn
-        object_name = model_tag+str(model_index)+"_"+str(model_paint) +"_" +str(i)
+        object_name = model_tag+str(model_index)+"_"+str(model_paint)+"_"+str(model_scale) +"_" +str(i)
         rospy.wait_for_service("gazebo/spawn_sdf_model")
         spawn_model(object_name, object_xml, "", object_pose, "world")
         rospy.sleep(0.5)
-        tags.append(model_tag+str(model_index)+"_"+str(model_paint))
+        tags.append(model_tag+str(model_index)+"_"+str(model_paint)+"_"+str(model_scale))
     return tags
 
-def spawn_from_gaussian(n, spawn_model):
-    for i in range(n):
-        # item
-        model_tag = random.choice(MODEL_LIST)
+# def spawn_from_gaussian(n, spawn_model):
+#     for i in range(n):
+#         # item
+#         model_tag = random.choice(MODEL_LIST)
 
-        with open(MODEL_PATH+model_tag+"/model.sdf", "r") as f:
-            object_xml = f.read()
+#         with open(MODEL_PATH+model_tag+"/model.sdf", "r") as f:
+#             object_xml = f.read()
 
-        # pose
-        pt_x = np.random.normal((LIMIT['x'][0]+LIMIT['x'][1])/2, (LIMIT['x'][1]-LIMIT['x'][0])/8)
-        pt_y = np.random.normal((LIMIT['y'][0]+LIMIT['y'][1])/2, (LIMIT['y'][1]-LIMIT['y'][0])/8)
-        ei = np.random.normal((LIMIT['rad'][0]+LIMIT['rad'][1])/2, (LIMIT['rad'][1]-LIMIT['rad'][0])/8)
-        ej = np.random.normal((LIMIT['rad'][0]+LIMIT['rad'][1])/2, (LIMIT['rad'][1]-LIMIT['rad'][0])/8)
-        ek = np.random.normal((LIMIT['rad'][0]+LIMIT['rad'][1])/2, (LIMIT['rad'][1]-LIMIT['rad'][0])/8)
-        quater = tf.transformations.quaternion_from_euler(ei, ej, ek)
-        orient = Quaternion(quater[0], quater[1], quater[2], quater[3])
+#         # pose
+#         pt_x = np.random.normal((LIMIT['x'][0]+LIMIT['x'][1])/2, (LIMIT['x'][1]-LIMIT['x'][0])/8)
+#         pt_y = np.random.normal((LIMIT['y'][0]+LIMIT['y'][1])/2, (LIMIT['y'][1]-LIMIT['y'][0])/8)
+#         ei = np.random.normal((LIMIT['rad'][0]+LIMIT['rad'][1])/2, (LIMIT['rad'][1]-LIMIT['rad'][0])/8)
+#         ej = np.random.normal((LIMIT['rad'][0]+LIMIT['rad'][1])/2, (LIMIT['rad'][1]-LIMIT['rad'][0])/8)
+#         ek = np.random.normal((LIMIT['rad'][0]+LIMIT['rad'][1])/2, (LIMIT['rad'][1]-LIMIT['rad'][0])/8)
+#         quater = tf.transformations.quaternion_from_euler(ei, ej, ek)
+#         orient = Quaternion(quater[0], quater[1], quater[2], quater[3])
 
-        object_pose = Pose(Point(x=pt_x, y=pt_y, z=0.5), orient)
+#         object_pose = Pose(Point(x=pt_x, y=pt_y, z=0.5), orient)
 
-        # spawn
-        object_name = model_tag+"_"+str(i)
-        rospy.wait_for_service("gazebo/spawn_sdf_model")
-        spawn_model(object_name, object_xml, "", object_pose, "world")
-        rospy.sleep(0.5)
+#         # spawn
+#         object_name = model_tag+"_"+str(i)
+#         rospy.wait_for_service("gazebo/spawn_sdf_model")
+#         spawn_model(object_name, object_xml, "", object_pose, "world")
+#         rospy.sleep(0.5)
 
 if __name__ == '__main__':
     delete_model, spawn_model, object_monitor = setup_delete_spawn_service()
