@@ -262,8 +262,18 @@ class DeclutterDemo():
                         self.ra.execute_grasp(group.cm, group.dir, d_img, class_num=label)
                     except Exception as ex:
                         print(ex)
+                        self.ra.move_to_start()
+                        self.ra.head_start_pose()
+                        c_img, d_img = self.robot.get_img_data()
+                        continue
+                        
                     print(self.ra.get_start_position(), self.ra.get_position())
-                    self.robot.body_neutral_pose()
+                    while True:
+                        try:
+                            self.robot.body_neutral_pose()
+                            break
+                        except Exception as ex:
+                            print(ex)
                     # self.ra.go_to_start_pose()
                     self.ra.move_to_start()
                     if hard_code:

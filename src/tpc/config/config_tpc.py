@@ -32,7 +32,7 @@ NUM_ROBOTS_ON_NETWORK = 1
 """EMPIRICALLY TUNED PARAMETERs"""
 #CONENCTED COMPONENTS ALG PARAMETERS
 #number of pixels apart to be singulated
-DIST_TOL = 20
+DIST_TOL = 25
 #background range for thresholding the image
 COLOR_TOL = 34
 #number of pixels necssary for a cluster
