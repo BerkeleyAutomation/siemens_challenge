@@ -22,6 +22,7 @@
         <geometry>
           <mesh>
             <uri>/home/zisu/simulator/siemens_challenge/sim_world/toolbox/screwdriver2.dae</uri>
+            <scale>1.0 1.0 1.0</scale>
           </mesh>
         </geometry>
         <pose frame=''>0 0 0 0 -0 0</pose>
