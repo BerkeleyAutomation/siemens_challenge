@@ -1,6 +1,7 @@
 import rospy, tf
 from gazebo_msgs.srv import DeleteModel, SpawnModel, GetWorldProperties
 from geometry_msgs.msg import *
+import xml.etree.ElementTree as et
 
 import random
 import numpy as np
@@ -66,9 +67,14 @@ def spawn_from_uniform(n, spawn_model):
         with open(os.getcwd()+'/sim_world/toolbox/'+model_tag+str(model_index)+"_"+str(model_paint)+"_"+str(model_scale)+"/model.sdf", "r") as f:
             object_xml = f.read()
 
+        xml = et.parse(os.getcwd()+'/sim_world/toolbox/'+model_tag+str(model_index)+"_"+str(model_paint)+"_"+str(model_scale)+"/model.sdf")
+        root = xml.getroot()
+        collision = root[0][0][6]
+        pose_lst = collision[2].text.split(" ")
+
         # pose
-        pt_x = np.random.uniform(LIMIT['x'][0], LIMIT['x'][1])
-        pt_y = np.random.uniform(LIMIT['y'][0], LIMIT['y'][1])
+        pt_x = np.random.uniform(LIMIT['x'][0], LIMIT['x'][1]) - float(pose_lst[0])
+        pt_y = np.random.uniform(LIMIT['y'][0], LIMIT['y'][1]) - float(pose_lst[1])
         ei = np.random.uniform(LIMIT['rad'][0], LIMIT['rad'][1])
         ej = np.random.uniform(LIMIT['rad'][0], LIMIT['rad'][1])
         ek = np.random.uniform(LIMIT['rad'][0], LIMIT['rad'][1])
