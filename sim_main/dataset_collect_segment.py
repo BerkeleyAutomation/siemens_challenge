@@ -90,7 +90,7 @@ class DataCollection():
 			# if not os.path.exists(IMDIR+str(i+start)):
 			# 	os.makedirs(IMDIR+str(i+start))
 
-			n = np.random.randint(1, 30)
+			n = np.random.randint(5, 15)
 
 			spawn_from_uniform(n, self.sm)
 			
@@ -112,7 +112,7 @@ class DataCollection():
 				# cv2.imwrite(IMDIR+str(i+start)+'/depth_{}.png'.format(str(len(labels) -1- j)), depth_scaled_to_255(np.array((d_img * 1000).astype(np.int16))))
 				if j == 0:
 					cv2.imwrite(IMDIR+'image_rgb/rgb_{}.png'.format(str(i+start)), c_img)
-					cv2.imwrite(IMDIR+'image_depth/depth_{}.png'.format(str(i+start)), depth_scaled_to_255(np.array((d_img * 1000).astype(np.int16))))
+					cv2.imwrite(IMDIR+'image_depth/depth_{}.png'.format(str(i+start)), depth_scaled_to_255(np.array((d_img).astype(np.int16))))
 					all_items = c_img
 
 			clean_floor(self.dm, self.om)

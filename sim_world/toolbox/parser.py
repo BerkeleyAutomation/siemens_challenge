@@ -3,8 +3,8 @@ import numpy as np
 import trimesh
 import os
 
-SLICE_UPPERBOUND = 0.015
-MIN_EDGE_UPPERBOUND = 0.15
+SLICE_UPPERBOUND = 0.01
+MIN_EDGE_UPPERBOUND = 0.10
 
 SIZES = np.arange(0.8, 1.3, 0.1)
 
@@ -35,7 +35,7 @@ def parse_box(filename, scale, new_model_name):
 	x_size, y_size, z_size = raw_box
 
 	while scale * np.min(raw_box) > MIN_EDGE_UPPERBOUND or scale ** 2 * np.min(raw_box) * np.median(raw_box) > SLICE_UPPERBOUND:
-		scale -= 0.01
+		scale -= 0.1
 
 	mass = root[0][0][1][0]
 	mass.text = str(0.5)
