@@ -62,7 +62,7 @@ def spawn_from_uniform(n, spawn_model):
         # item
         model_tag = random.choice(MODEL_TYPE.keys())
         model_index = random.choice(range(1, MODEL_TYPE[model_tag]+1))
-        model_paint = random.choice(range(5))
+        model_paint = random.choice(range(8))
         model_scale = random.choice(range(5))
 
         with open(os.getcwd()+'/sim_world/toolbox/'+model_tag+str(model_index)+"_"+str(model_paint)+"_"+str(model_scale)+"/model.sdf", "r") as f:

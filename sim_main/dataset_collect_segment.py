@@ -80,7 +80,7 @@ class DataCollection():
 		if not os.path.exists(IMDIR+"json_labels"):
 			os.makedirs(IMDIR+"json_labels")
 
-		start = len([x for x in os.listdir(IMDIR+"image_rgb") if 'png' in x])
+		start = len([x for x in os.listdir(IMDIR+"bbs") if 'png' in x])
 
 		i = 0
 
