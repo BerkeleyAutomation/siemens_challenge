@@ -9,8 +9,6 @@ import os
 
 LIMIT = {'x':(-0.2, 0.2), 'y':(0.8, 1.2), 'rad':(0, 2*3.14)}
 
-MODEL_PATH = os.getcwd()+"/sim_world/toolbox/"
-
 MODEL_TYPE = {"lightbulb": 1, "gear": 2, "nozzle": 1, "screwdriver": 9, "tape": 2, "barClamp": 1, "combinationWrench": 15, "hammer": 1, "openEndWrench": 3, "socketWrench": 3, "adjustableWrench": 4, "tube": 1, "bottle": 9, "cup": 1, "mug": 3, "alarmClock":1, "bowl":1, "dolphin":1, "elephant":1, "pear":1, "pen":2, "scissors":2, "shoe":3, "apple":1, "banana":1, "duplo":5, "grape":1, "rectangularCube":3}
 
 
@@ -62,10 +60,10 @@ def spawn_from_uniform(n, spawn_model):
         # item
         model_tag = random.choice(MODEL_TYPE.keys())
         model_index = random.choice(range(1, MODEL_TYPE[model_tag]+1))
-        model_paint = random.choice(range(5))
+        model_paint = random.choice(range(8))
         model_scale = random.choice(range(5))
 
-        with open(MODEL_PATH+model_tag+str(model_index)+"_"+str(model_paint)+"_"+str(model_scale)+"/model.sdf", "r") as f:
+        with open(os.getcwd()+'/sim_world/toolbox/'+model_tag+str(model_index)+"_"+str(model_paint)+"_"+str(model_scale)+"/model.sdf", "r") as f:
             object_xml = f.read()
 
         # pose

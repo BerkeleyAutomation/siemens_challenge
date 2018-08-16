@@ -1,9 +1,0 @@
-<?xml version="1.0"?>
-<launch>
-  <include file="$(find hsrb_gazebo_launch)/launch/include/hsrb_gazebo_common.xml" >
-    <arg name="map" value="$(find tmc_potential_maps)/maps/white_space/map.yaml" />
-    <arg name="world_name" value="/home/zisu/simulator/siemens_challenge/sim_world/test_ar.world" />
-    <arg name="robot_pos" value="-x 0 -y 0 -z 0.2 -Y 0" />
-    <arg name="use_laser_odom" value="true" />
-  </include>
-</launch>
