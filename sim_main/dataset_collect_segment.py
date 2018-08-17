@@ -27,8 +27,8 @@ from gazebo_msgs.srv import DeleteModel, SpawnModel, GetWorldProperties, SetPhys
 import gazebo_msgs.msg
 from std_msgs.msg import Float64
 
-from segmentation import *
-# from segmentation_rgb import *
+# from segmentation import *
+from segmentation_rgb import *
 
 def depth_scaled_to_255(img):
 	img = 255.0/np.max(img)*img
@@ -61,10 +61,11 @@ class DataCollection():
 
 	def collect(self, dataset_size=1000):
 
-		IMDIR = 'sim_data/dataset_08_013_2018/'
+		# IMDIR = 'sim_data/dataset_08_013_2018/'
+		IMDIR = 'sim_data/test_floorplan/'
+
 		if not os.path.exists(IMDIR):
 			os.makedirs(IMDIR)
-		# IMDIR = 'sim_data/test/'
 		if not os.path.exists(IMDIR+"bb_labels"):
 			os.makedirs(IMDIR+"bb_labels")
 		if not os.path.exists(IMDIR+"bbs"):
@@ -118,7 +119,8 @@ class DataCollection():
 			clean_floor(self.dm, self.om)
 			time.sleep(0.1)
 
-			# c_img, d_img = self.robot.get_img_data()
+			c_img, d_img = self.robot.get_img_data()
+			img_lst.append(c_img)
 
 			# cv2.imwrite(IMDIR+str(i+start)+'/rgb_background.png', c_img)
 			# cv2.imwrite(IMDIR+str(i+start)+'/depth_background.png', depth_scaled_to_255(np.array((d_img * 1000).astype(np.int16))))
@@ -129,27 +131,27 @@ class DataCollection():
 			# 	json.dump(labels, f)
 
 			mask_lst = find_item_masks(img_lst, labels)
-			compare, diff, seg_image, bb_image = draw_masks(mask_lst, all_items, labels)
+			compare, diff, seg_image, bb_image = draw_masks(mask_lst, all_items, labels, img_lst)
 
 
 
-			if diff > 640*480/300:
-				os.remove(IMDIR+'image_rgb/rgb_{}.png'.format(str(i+start)))
-				os.remove(IMDIR+'image_depth/depth_{}.png'.format(str(i+start)))
-			else:
-				cv2.imwrite(IMDIR+'gt/compare_{}.png'.format(str(i+start)), compare)
-				cv2.imwrite(IMDIR+'image_labels/seg_{}.png'.format(str(i+start)), seg_image)
-				cv2.imwrite(IMDIR+'bbs/bb_{}.png'.format(str(i+start)), bb_image)
-				create_segment_label(IMDIR, str(i+start), labels, mask_lst)
+			# if diff > 640*480/1:
+			# 	os.remove(IMDIR+'image_rgb/rgb_{}.png'.format(str(i+start)))
+			# 	os.remove(IMDIR+'image_depth/depth_{}.png'.format(str(i+start)))
+			# else:
+			cv2.imwrite(IMDIR+'gt/compare_{}.png'.format(str(i+start)), compare)
+			cv2.imwrite(IMDIR+'image_labels/seg_{}.png'.format(str(i+start)), seg_image)
+			cv2.imwrite(IMDIR+'bbs/bb_{}.png'.format(str(i+start)), bb_image)
+			create_segment_label(IMDIR, str(i+start), labels, mask_lst)
 
 			# shutil.rmtree(IMDIR+str(i+start))
 			time.sleep(0.5)
 
 			
 
-			if diff <= 640*480/300:
-				i+=1
-			# i += 1
+			# if diff <= 640*480/300:
+			# 	i+=1
+			i += 1
 
 			
 
@@ -162,7 +164,7 @@ class DataCollection():
 
 
 if __name__ == "__main__":
-	DataCollection().collect(dataset_size=10000)
+	DataCollection().collect(dataset_size=10)
 
 
 

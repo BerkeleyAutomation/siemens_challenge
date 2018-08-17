@@ -13,8 +13,10 @@ from shapely.ops import unary_union, polygonize
 from scipy.spatial import Delaunay
 
 import math
+import copy
 
-SEG_LABELS = {"screwdriver":0, "tape":1, "tube":2, "scrap":3, "hammer":4, "wrench":5, "background":6}
+CLASS_MAP = {"bowl":"cup", "mug":"cup", "barClamp":"assemblyPart", "gear":"assemblyPart", "nozzle":"assemblyPart", "apple":"fruit", "banana":"fruit", "pear":"fruit", "dolphin":"toy", "elephant":"toy", "adjustableWrench":"wrench", "combinationWrench":"wrench", "openEndWrench":"wrench", "socketWrench":"wrench", "lightbulb":"utility", "pen":"utility", "alarmClock":"utility", "shoe":"utility", "duplo":"assemblyPart", "grape":"fruit", "rectangularCube":"utility"}
+SEG_LABELS = {"utility":0, "bottle":1, "cup":2, "fruit":3, "assemblyPart":4, "hammer":5, "scissors":6, "screwdriver":7, "tape":8, "toy":9, "tube":10, "wrench":11, "background":12}
 # def find_red_markers(image):
 # 	b = image[:,:,0]
 # 	g = image[:,:,1]
@@ -113,7 +115,7 @@ def extract_mask(gray):
 	kernel = np.ones((3, 3), np.uint8)
 	# mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
 	mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
-	contours, hierarchy = cv2.findContours(mask, 1, 1)
+	im2, contours, hierarchy = cv2.findContours(mask, 1, 1)
 	areas = [cv2.contourArea(cnt) for cnt in contours]
 	# print(areas)
 	moments = [[cv2.moments(cnt), cnt] for cnt in contours if cv2.contourArea(cnt) > 0]
@@ -129,36 +131,7 @@ def extract_mask(gray):
 	return mask
 
 def find_curr_img(prev_img, curr_img):
-	# rows, cols, channels = curr_img.shape
-	# shift_x = 0
-	# shift_y = 0
-	# shift_r = 0
-	# min_diff = np.sum(cv2.subtract(curr_img, prev_img))
-	# for i in range(10):
-	# 	for j in range(10):
-	# 		for r in range(6):
-	# 			if r > 2:
-	# 				M = cv2.getRotationMatrix2D((cols/2,rows/2),(r - 3) * 10,1)
-	# 			else:
-	# 				M = cv2.getRotationMatrix2D((cols/2,rows/2),(3 - r) * 10,0)
-	# 			shift_prev = cv2.warpAffine(prev_img,M,(cols,rows))
-	# 			m = np.float32([[1, 0, i-5], [0, 1, j-5]])
-	# 			shift_prev = cv2.warpAffine(shift_prev, m, (cols, rows))
-	# 			diff = cv2.subtract(curr_img, shift_prev)
-	# 			if np.sum(diff) < min_diff:
-	# 				shift_x = i - 5
-	# 				shift_y = j - 5
-	# 				shift_r = (r - 3) * 10
-	# 				min_diff = np.sum(diff)
-	# print(shift_x, shift_y, shift_r)
-	# kernel = np.ones((3, 3), np.uint8)
-	# if shift_r > 0: 
-	# 	M = cv2.getRotationMatrix2D((cols/2,rows/2),shift_r,1)
-	# else:
-	# 	M = cv2.getRotationMatrix2D((cols/2,rows/2),abs(shift_r),0)
-	# shift_prev = cv2.warpAffine(prev_img,M,(cols,rows))
-	# m = np.float32([[1, 0, shift_x], [0, 1, shift_y]])
-	# shift_prev = cv2.warpAffine(prev_img, m, (cols, rows))
+
 	diff = cv2.absdiff(curr_img, prev_img)
 	cv2.imwrite("debug_diff.png", diff)
 
@@ -241,7 +214,7 @@ def reduce_noice(mask):
 	return mask
 
 def find_contour_and_bounding_box(mask):
-	contours, hierarchy = cv2.findContours(mask, 1, 1)
+	im2, contours, hierarchy = cv2.findContours(mask, 1, 1)
 	if len(contours) != 1:
 		return None, None
 	x, y, w, h = cv2.boundingRect(contours[0])
@@ -250,52 +223,49 @@ def find_contour_and_bounding_box(mask):
 	return contours, [x, y, x + w, y + h]
 
 
-def find_item_masks(folder_path):
+def find_item_masks(img_lst, label_lst):
 	masks = []
-	with open(folder_path+"/"+"labels.json") as f:
-		lst = json.load(f)
+	
 	# print(lst)
-	item_num = len(lst)
+	item_num = len(label_lst)
 
 	for i in range(item_num):
-		curr_img = cv2.imread(folder_path+"/rgb_"+str(i)+".png")
+		curr_img = img_lst[i]
 		if i == 0:
-			prev_img = cv2.imread(folder_path+"/rgb_background.png")
+			prev_img = img_lst[-1]
 		else:
-			prev_img = cv2.imread(folder_path+"/rgb_"+str(i-1)+".png")
+			prev_img = img_lst[i-1]
 		
 		diff, trans_prev_img = find_curr_img(prev_img, curr_img)
-		cv2.imwrite(folder_path+"/debug_diff_"+str(i-1)+".png", diff)
+		# cv2.imwrite(folder_path+"/debug_diff_"+str(i-1)+".png", diff)
 
-		cv2.imwrite(folder_path+"/debug_"+str(i-1)+".png", trans_prev_img)
+		# cv2.imwrite(folder_path+"/debug_"+str(i-1)+".png", trans_prev_img)
 		
 		ret, diff = cv2.threshold(diff, 20, 255, 0)
 
-		cv2.imwrite(folder_path+"/debug_diff_filted_"+str(i-1)+".png", diff)
+		# cv2.imwrite(folder_path+"/debug_diff_filted_"+str(i-1)+".png", diff)
 		
 		gray = cv2.cvtColor(diff, cv2.COLOR_RGB2GRAY)
 		
 		ret, mask = cv2.threshold(gray, 2, 255, 0)
-		cv2.imwrite(folder_path+"/debug_mask_"+str(i-1)+".png", mask)
+		# cv2.imwrite(folder_path+"/debug_mask_"+str(i-1)+".png", mask)
 		#TODO: turn RGB to binary image
 		masks.append(reduce_noice(mask))
 	# print(len(masks))
 
-	for i in range(item_num):
-		cv2.imwrite(folder_path+"/"+lst[i]+".png", masks[i])
+	return masks
 
-def draw_masks(folder_path):
-	with open(folder_path+"/"+"labels.json") as f:
-		lst = json.load(f)
-	item_num = len(lst)
+def draw_masks(mask_lst, all_item_img, label_lst, img_lst):
+
+	item_num = len(label_lst)
 	# print(folder_path+"/rgb_"+str(item_num - 1)+".png")
-	img = cv2.imread(folder_path+"/rgb_"+str(item_num - 1)+".png", 1)
-	img2 = cv2.imread(folder_path+"/rgb_"+str(item_num - 1)+".png", 1)
+	img = copy.deepcopy(all_item_img)
+	img2 = copy.deepcopy(all_item_img)
 	# print(img)
-	diff, trans_prev_img = find_curr_img(cv2.imread(folder_path+"/rgb_"+str(item_num - 1)+".png"), cv2.imread(folder_path+"/rgb_background.png"))
-	cv2.imwrite("test_diff.png", diff)
+	diff, trans_prev_img = find_curr_img(copy.deepcopy(all_item_img), img_lst[-1])
+	# cv2.imwrite("test_diff.png", diff)
 	ret, diff = cv2.threshold(diff, 10, 255, 0)
-	cv2.imwrite("test_diff2.png", diff)
+	# cv2.imwrite("test_diff2.png", diff)
 	gray = cv2.cvtColor(diff, cv2.COLOR_RGB2GRAY)
 	pure_img = extract_mask(gray)
 
@@ -304,49 +274,51 @@ def draw_masks(folder_path):
 	blank = np.zeros(img.shape, img.dtype)
 	blank2 = np.zeros(pure_img.shape, pure_img.dtype)
 	blank3 = np.zeros(pure_img.shape, pure_img.dtype)
-	for filename in listdir(folder_path):
-		if filename.split(".")[1] == "png" and filename.split("_")[0] != 'rgb' and filename.split("_")[0] != 'depth' and filename.split("_")[0] != 'debug':
+	for i in range(item_num):
 
-			class_label = re.split('(\d+)', filename)[0]
+		class_label = re.split('(\d+)', label_lst[i])[0]
 
-			mask = cv2.imread(folder_path+"/"+filename, 0)
-			seg, bb = find_contour_and_bounding_box(mask)
-			if not bb is None:
-				test_bb = cv2.rectangle(img2,(bb[0],bb[1]),(bb[2],bb[3]),(0,255,0),2)
+		mask = mask_lst[i]
+		seg, bb = find_contour_and_bounding_box(mask)
+		if not bb is None:
+			test_bb = cv2.rectangle(img2,(bb[0],bb[1]),(bb[2],bb[3]),(0,255,0),2)
 
-			color = np.zeros(img.shape, img.dtype)
-			color[:,:] = (count % 3 * 127,(count // 3) % 3 * 127, (count // 9) % 3 * 127)
-			colorMask = cv2.bitwise_and(color, color, mask=mask)
+		color = np.zeros(img.shape, img.dtype)
+		color[:,:] = (count % 3 * 127,(count // 3) % 3 * 127, (count // 9) % 3 * 127)
+		colorMask = cv2.bitwise_and(color, color, mask=mask)
 
-			pure = np.zeros(pure_img.shape, pure_img.dtype)
-			# pure[:,:] = 6 - SEG_LABELS[class_label]
-			pure[:,:] = 255
-			pureMask = cv2.bitwise_and(pure, pure, mask=mask)
-			cv2.addWeighted(pureMask, 1, blank2, 1, 0, blank2)
+		pure = np.zeros(pure_img.shape, pure_img.dtype)
+		# pure[:,:] = 6 - SEG_LABELS[class_label]
+		pure[:,:] = 255
+		pureMask = cv2.bitwise_and(pure, pure, mask=mask)
+		cv2.addWeighted(pureMask, 1, blank2, 1, 0, blank2)
 
-			seg = np.zeros(pure_img.shape, pure_img.dtype)
-			seg[:,:] = 6 - SEG_LABELS[class_label]
-			segMask = cv2.bitwise_and(seg, seg, mask=mask)
-			cv2.addWeighted(segMask, 1, blank3, 1, 0, blank3)
+		seg = np.zeros(pure_img.shape, pure_img.dtype)
+		if class_label in CLASS_MAP.keys():
+			pix = SEG_LABELS[CLASS_MAP[class_label]]
+		else:
+			pix = SEG_LABELS[class_label]
+		seg[:,:] = 6 - pix
+		segMask = cv2.bitwise_and(seg, seg, mask=mask)
+		cv2.addWeighted(segMask, 1, blank3, 1, 0, blank3)
 
-			cv2.addWeighted(colorMask, 1, blank, 1, 0, blank)
-			# cv2.imwrite(folder_path+"/masked_"+filename, colorMask)
-			count += 1
-	cv2.imwrite(folder_path+"/masked_imgs.png", blank2)
+		cv2.addWeighted(colorMask, 1, blank, 1, 0, blank)
+		# cv2.imwrite(folder_path+"/masked_"+filename, colorMask)
+		count += 1
+
+	# cv2.imwrite(folder_path+"/masked_imgs.png", blank2)
 	cv2.addWeighted(blank, 1, img, 0.5, 0, img)
-	cv2.imwrite(folder_path+"/compare_imgs2.png", img)
+	# cv2.imwrite(folder_path+"/compare_imgs2.png", img)
 	abs_diff = cv2.absdiff(blank2, pure_img)
 	print(abs_diff.sum() / 255)
 	# return img, abs_diff.sum() / 255, cv2.subtract(6, blank2)
 	return img, abs_diff.sum() / 255, cv2.subtract(6, blank3), img2
 
 
-def create_segment_label(folder_base, label_index):
+def create_segment_label(folder_base, label_index, label_lst, mask_lst):
 	folder_path = folder_base + str(label_index)
-	with open(folder_path+"/"+"labels.json") as f:
-		lst = json.load(f)	
 
-	item_num = len(lst)
+	item_num = len(label_lst)
 
 	# set up segmentation json file
 	seg_label = {
@@ -383,54 +355,52 @@ def create_segment_label(folder_base, label_index):
 
 	et.SubElement(bbox_root, "segmented").text = "0"
 
-	for filename in listdir(folder_path):
-		if filename.split(".")[1] == "png" and filename.split("_")[0] != 'rgb' and filename.split("_")[0] != 'depth' and filename.split("_")[0] != 'masked' and filename.split("_")[0] != 'compare' and filename.split("_")[0] != 'debug':
-			mask = cv2.imread(folder_path+"/"+filename, 0)
-			seg, bb = find_contour_and_bounding_box(mask)
+	for i in range(item_num):
+		mask = mask_lst[i]
+		seg, bb = find_contour_and_bounding_box(mask)
 
-			# test_bb = cv2.rectangle(cv2.imread(folder_path+"/"+filename, 1),(bb[0],bb[1]),(bb[2],bb[3]),(0,255,0),2)
-			# cv2.imwrite(folder_path+"/bb_"+filename, test_bb)
+		# test_bb = cv2.rectangle(cv2.imread(folder_path+"/"+filename, 1),(bb[0],bb[1]),(bb[2],bb[3]),(0,255,0),2)
+		# cv2.imwrite(folder_path+"/bb_"+filename, test_bb)
 
-			class_label = re.split('(\d+)', filename)[0]
+		class_label = re.split('(\d+)', label_lst[i])[0]
 
-			if seg is None:
-				continue
+		if class_label in CLASS_MAP.keys():
+			class_label = CLASS_MAP[class_label]
 
-			# json add item
-			single_item = {"label": class_label, "line_color": None, "fill_color": None, "points": seg}
-			seg_label["shapes"].append(single_item)
+		if seg is None:
+			continue
 
-			# xml add item
-			obj_info = et.SubElement(bbox_root, "object")
+		# json add item
+		single_item = {"label": class_label, "line_color": None, "fill_color": None, "points": seg}
+		seg_label["shapes"].append(single_item)
 
-			et.SubElement(obj_info, "name").text = class_label
-			et.SubElement(obj_info, "pose").text = "Unspecified"
-			et.SubElement(obj_info, "truncated").text = "0"
-			et.SubElement(obj_info, "difficult").text = "0"
+		# xml add item
+		obj_info = et.SubElement(bbox_root, "object")
 
-			bbox = et.SubElement(obj_info, "bndbox")
-			et.SubElement(bbox, "xmin").text = str(bb[0])
-			et.SubElement(bbox, "ymin").text = str(bb[1])
-			et.SubElement(bbox, "xmax").text = str(bb[2])
-			et.SubElement(bbox, "ymax").text = str(bb[3])
+		et.SubElement(obj_info, "name").text = class_label
+		et.SubElement(obj_info, "pose").text = "Unspecified"
+		et.SubElement(obj_info, "truncated").text = "0"
+		et.SubElement(obj_info, "difficult").text = "0"
 
+		bbox = et.SubElement(obj_info, "bndbox")
+		et.SubElement(bbox, "xmin").text = str(bb[0])
+		et.SubElement(bbox, "ymin").text = str(bb[1])
+		et.SubElement(bbox, "xmax").text = str(bb[2])
+		et.SubElement(bbox, "ymax").text = str(bb[3])
 
-	# write to json
-	with open(folder_path+"/"+"rgb_"+str(item_num-1)+".json", "w") as out:
-		json.dump(seg_label, out, indent=4)
 
 	# write to json
-	with open(folder_base+"seg_label_"+str(label_index)+".json", "w") as out:
+	with open(folder_base+"json_labels/seg_label_"+str(label_index)+".json", "w") as out:
 		json.dump(seg_label, out, indent=4)
 
 	# write to xml tree
 	# tree = et.ElementTree(bbox_root)
 	# tree.write(folder_path+"/"+"rgb_"+str(item_num-1)+".xml")
 	xmlstr = minidom.parseString(et.tostring(bbox_root)).toprettyxml(indent="   ")
-	with open(folder_path+"/"+"rgb_"+str(item_num-1)+".xml", "w") as f:
-		f.write(xmlstr)
+	# with open(folder_path+"/"+"rgb_"+str(item_num-1)+".xml", "w") as f:
+	# 	f.write(xmlstr)
 
-	with open(folder_base+"box_label_"+str(label_index)+".xml", "w") as f:
+	with open(folder_base+"bb_labels/box_label_"+str(label_index)+".xml", "w") as f:
 		f.write(xmlstr)
 	
 

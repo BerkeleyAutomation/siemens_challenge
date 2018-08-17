@@ -202,9 +202,9 @@ def find_item_masks(img_lst, label_lst):
 
 	return masks
 
-def draw_masks(mask_lst, all_item_img, label_lst):
+def draw_masks(mask_lst, all_item_img, label_lst, img_lst):
 	
-	item_num = len(mask_lst)
+	item_num = len(label_lst)
 	# print(folder_path+"/rgb_"+str(item_num - 1)+".png")
 	img = copy.deepcopy(all_item_img)
 	img2 = copy.deepcopy(all_item_img)
