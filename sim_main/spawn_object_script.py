@@ -2,6 +2,7 @@ import rospy, tf
 from gazebo_msgs.srv import DeleteModel, SpawnModel, GetWorldProperties
 from geometry_msgs.msg import *
 import xml.etree.ElementTree as et
+import time
 
 import random
 import numpy as np
@@ -11,7 +12,6 @@ import os
 LIMIT = {'x':(-0.2, 0.2), 'y':(0.8, 1.2), 'rad':(0, 2*3.14)}
 
 MODEL_TYPE = {"lightbulb": 1, "gear": 2, "nozzle": 1, "screwdriver": 9, "tape": 2, "barClamp": 1, "combinationWrench": 15, "hammer": 1, "openEndWrench": 3, "socketWrench": 3, "adjustableWrench": 4, "tube": 1, "bottle": 9, "cup": 1, "mug": 3, "alarmClock":1, "bowl":1, "dolphin":1, "elephant":1, "pear":1, "pen":2, "scissors":2, "shoe":3, "apple":1, "banana":1, "duplo":5, "grape":1, "rectangularCube":3}
-
 
 def setup_delete_spawn_service():
     """This method create rosservice call for spawning objects and deleting objects"""
@@ -57,6 +57,11 @@ def clean_floor(delete_model, object_monitor):
 
 def spawn_from_uniform(n, spawn_model):
     tags = []
+
+    sim_time = rospy.get_rostime().secs
+    real_time = time.time()
+    time_array = []
+
     for i in range(n):
         # item
         model_tag = random.choice(MODEL_TYPE.keys())
@@ -87,9 +92,16 @@ def spawn_from_uniform(n, spawn_model):
         object_name = model_tag+str(model_index)+"_"+str(model_paint)+"_"+str(model_scale) +"_" +str(i)
         rospy.wait_for_service("gazebo/spawn_sdf_model")
         spawn_model(object_name, object_xml, "", object_pose, "world")
+        rospy.wait_for_service("gazebo/spawn_sdf_model")
         rospy.sleep(0.5)
         tags.append(model_tag+str(model_index)+"_"+str(model_paint)+"_"+str(model_scale))
-    return tags
+
+        # time logging
+        time_array.append([rospy.get_rostime().secs - sim_time, time.time() - real_time])
+        real_time = time.time()
+        sim_time = rospy.get_rostime().secs
+
+    return tags, np.array(time_array)
 
 # def spawn_from_gaussian(n, spawn_model):
 #     for i in range(n):
