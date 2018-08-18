@@ -116,9 +116,11 @@ class DataCollection():
 			labels = get_object_list(self.om)
 
 			img_lst = []
+			delete_correct = True
 
 			for j in range(len(labels)):
-				
+				if len(get_object_list(self.om)) + j != len(labels):
+					delete_correct = False
 				c_img, d_img = self.robot.get_img_data()
 				delete_object(labels[len(labels) - 1 - j], self.dm)
 				img_lst.insert(0, c_img)
@@ -149,7 +151,7 @@ class DataCollection():
 
 
 
-			if diff > 640*480/300:
+			if diff > 640*480/100 or not delete_correct:
 				os.remove(IMDIR+'image_rgb/rgb_{}.png'.format(str(i+start)))
 				os.remove(IMDIR+'image_depth/depth_{}.png'.format(str(i+start)))
 			else:
@@ -163,7 +165,7 @@ class DataCollection():
 
 			
 
-			if diff <= 640*480/300:
+			if diff <= 640*480/100:
 				i+=1
 			# i += 1
 
