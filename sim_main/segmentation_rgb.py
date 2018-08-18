@@ -281,7 +281,7 @@ def draw_masks(mask_lst, all_item_img, label_lst, img_lst):
 		mask = mask_lst[i]
 		seg, bb = find_contour_and_bounding_box(mask)
 		if not bb is None:
-			test_bb = cv2.rectangle(img2,(bb[0],bb[1]),(bb[2],bb[3]),(0,255,0),2)
+			test_bb = cv2.rectangle(img2,(bb[0],bb[1]),(bb[2],bb[3]),(count % 3 * 127,(count // 3) % 3 * 127, (count // 9) % 3 * 127),2)
 
 		color = np.zeros(img.shape, img.dtype)
 		color[:,:] = (count % 3 * 127,(count // 3) % 3 * 127, (count // 9) % 3 * 127)

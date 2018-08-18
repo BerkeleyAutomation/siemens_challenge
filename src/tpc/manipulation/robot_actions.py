@@ -10,10 +10,12 @@ class Robot_Actions():
 
     def safe_wait(self):
         #making sure the robot is finished moving
-        time.sleep(0.5)
+        time.sleep(2)
+
 
     def go_to_start_pose(self):
         self.robot.body_start_pose()
+        self.safe_wait()
         self.robot.head_start_pose()
         self.safe_wait()
 
