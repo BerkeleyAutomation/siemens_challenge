@@ -61,7 +61,7 @@ class DataCollection():
 
 	def collect(self, dataset_size=1000):
 
-		IMDIR = 'sim_data/dataset_08_017_2018_2/'
+		IMDIR = 'sim_data/dataset_08_018_2018/'
 		# time_sum = []
 		#IMDIR = 'sim_data/test_floorplan/'
 
