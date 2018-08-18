@@ -47,6 +47,7 @@ def delete_object(name, delete_model):
     rospy.wait_for_service("gazebo/delete_model")
     print("Deleting Object.")
     delete_model(name)
+    rospy.wait_for_service("gazebo/delete_model")
     return name
 
 def clean_floor(delete_model, object_monitor):
