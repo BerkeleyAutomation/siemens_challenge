@@ -127,20 +127,20 @@ def extract_mask(gray):
 		else:
 			cv2.drawContours(mask, [moments[i][1]], 0, (255, 255, 255), -1)
 
-	cv2.imwrite("test.png", mask)
+	# cv2.imwrite("test.png", mask)
 	return mask
 
 def find_curr_img(prev_img, curr_img):
 
 	diff = cv2.absdiff(curr_img, prev_img)
-	cv2.imwrite("debug_diff.png", diff)
+	# cv2.imwrite("debug_diff.png", diff)
 
 	# return diff, trans_prev_img
-	return diff, prev_img
+	return diff
 
 def reduce_noice(mask):
 
-	kernel = np.ones((3, 3), np.uint8)
+	kernel = np.ones((1, 1), np.uint8)
 	# mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
 
 	img, contours, hierarchy = cv2.findContours(mask, 1, 1)
@@ -167,12 +167,12 @@ def reduce_noice(mask):
 	max_area = max(areas)
 
 	for i in range(len(contours)):
-		if areas[i] < 40:
+		if areas[i] < 20:
 			cv2.drawContours(mask, [contours[i]], 0, (0, 0, 0), -1)
 		else:
 			cv2.drawContours(mask, [contours[i]], 0, (255, 255, 255), -1)
 
-	mask = cv2.dilate(mask, kernel)
+	# mask = cv2.dilate(mask, kernel)
 
 	if len(contours) > 1:
 		# kernel = np.ones((20, 20), np.uint8)
@@ -189,7 +189,7 @@ def reduce_noice(mask):
 			pts.append(np.array([[int(M['m10']/M['m00']), int(M['m01']/M['m00'])]]))
 
 
-		concave_hull, edge_points = alpha_shape(pts, 0.1)
+		concave_hull, edge_points = alpha_shape(pts, 0.7)
 		coords = geometry.mapping(concave_hull)["coordinates"]
 		for coord_list in coords:
 			coord_list = np.array(coord_list, dtype=np.int32) 
@@ -225,6 +225,7 @@ def find_contour_and_bounding_box(mask):
 
 def find_item_masks(img_lst, label_lst):
 	masks = []
+	noshift = True
 	
 	# print(lst)
 	item_num = len(label_lst)
@@ -236,24 +237,53 @@ def find_item_masks(img_lst, label_lst):
 		else:
 			prev_img = img_lst[i-1]
 		
-		diff, trans_prev_img = find_curr_img(prev_img, curr_img)
-		# cv2.imwrite(folder_path+"/debug_diff_"+str(i-1)+".png", diff)
-
-		# cv2.imwrite(folder_path+"/debug_"+str(i-1)+".png", trans_prev_img)
+		diff = find_curr_img(prev_img, curr_img)
 		
 		ret, diff = cv2.threshold(diff, 20, 255, 0)
-
-		# cv2.imwrite(folder_path+"/debug_diff_filted_"+str(i-1)+".png", diff)
 		
 		gray = cv2.cvtColor(diff, cv2.COLOR_RGB2GRAY)
 		
 		ret, mask = cv2.threshold(gray, 2, 255, 0)
-		# cv2.imwrite(folder_path+"/debug_mask_"+str(i-1)+".png", mask)
-		#TODO: turn RGB to binary image
+		
 		masks.append(reduce_noice(mask))
+
+		# validate masks
+		prev_diff = find_curr_img(prev_img, img_lst[-1])
+		ret, prev_diff = cv2.threshold(prev_diff, 20, 255, 0)
+		prev_gray = cv2.cvtColor(prev_diff, cv2.COLOR_RGB2GRAY)
+		ret, prev_mask = cv2.threshold(prev_gray, 2, 255, 0)
+
+		img, contours, hierarchy = cv2.findContours(prev_mask, 1, 1)
+
+		areas = [cv2.contourArea(cnt) for cnt in contours]
+
+		for i in range(len(contours)):
+			if areas[i] < 20:
+				cv2.drawContours(prev_mask, [contours[i]], 0, (0, 0, 0), -1)
+			else:
+				cv2.drawContours(prev_mask, [contours[i]], 0, (255, 255, 255), -1)
+
+
+		curr_diff = find_curr_img(curr_img, img_lst[-1])
+		ret, curr_diff = cv2.threshold(curr_diff, 20, 255, 0)
+		curr_gray = cv2.cvtColor(curr_diff, cv2.COLOR_RGB2GRAY)
+		ret, curr_mask = cv2.threshold(curr_gray, 2, 255, 0)
+
+		img, contours, hierarchy = cv2.findContours(curr_mask, 1, 1)
+
+		areas = [cv2.contourArea(cnt) for cnt in contours]
+
+		for i in range(len(contours)):
+			if areas[i] < 20:
+				cv2.drawContours(curr_mask, [contours[i]], 0, (0, 0, 0), -1)
+			else:
+				cv2.drawContours(curr_mask, [contours[i]], 0, (255, 255, 255), -1)
+
+		if np.sum(cv2.absdiff(cv2.add(mask, prev_mask), curr_mask))/255 > 180:
+			noshift = False
 	# print(len(masks))
 
-	return masks
+	return masks, noshift
 
 def draw_masks(mask_lst, all_item_img, label_lst, img_lst):
 
@@ -262,7 +292,7 @@ def draw_masks(mask_lst, all_item_img, label_lst, img_lst):
 	img = copy.deepcopy(all_item_img)
 	img2 = copy.deepcopy(all_item_img)
 	# print(img)
-	diff, trans_prev_img = find_curr_img(copy.deepcopy(all_item_img), img_lst[-1])
+	diff = find_curr_img(copy.deepcopy(all_item_img), img_lst[-1])
 	# cv2.imwrite("test_diff.png", diff)
 	ret, diff = cv2.threshold(diff, 10, 255, 0)
 	# cv2.imwrite("test_diff2.png", diff)
@@ -280,6 +310,7 @@ def draw_masks(mask_lst, all_item_img, label_lst, img_lst):
 
 		mask = mask_lst[i]
 		seg, bb = find_contour_and_bounding_box(mask)
+	
 		if not bb is None:
 			test_bb = cv2.rectangle(img2,(bb[0],bb[1]),(bb[2],bb[3]),(count % 3 * 127,(count // 3) % 3 * 127, (count // 9) % 3 * 127),2)
 

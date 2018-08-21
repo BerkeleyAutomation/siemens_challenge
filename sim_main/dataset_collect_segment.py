@@ -61,9 +61,10 @@ class DataCollection():
 
 	def collect(self, dataset_size=1000):
 
-		IMDIR = 'sim_data/dataset_08_018_2018/'
+		# IMDIR = 'sim_data/test/'
 		# time_sum = []
 		#IMDIR = 'sim_data/test_floorplan/'
+		IMDIR="sim_data/dataset_08_20_2018_2/"
 
 		if not os.path.exists(IMDIR):
 			os.makedirs(IMDIR)
@@ -85,8 +86,10 @@ class DataCollection():
 		start = len([x for x in os.listdir(IMDIR+"bbs") if 'png' in x])
 
 		i = 0
+		total = 0
 
 		while i < dataset_size:
+			total += 1
 			print(i+start)
 			
 			# if not os.path.exists(IMDIR+str(i+start)):
@@ -107,16 +110,15 @@ class DataCollection():
 			time.sleep(0.1)
 
 			n = np.random.randint(5, 15)
-			# n=10
+			# n=1
 
-			tags, time_array = spawn_from_uniform(n, self.sm)
+			spawn_from_uniform(n, self.sm)
 			# time_sum.append(np.mean(time_array, axis=0).tolist())
-			print(np.mean(time_array, axis=0))
+			# print(np.mean(time_array, axis=0))
 			
 			labels = get_object_list(self.om)
 
 			img_lst = []
-			delete_correct = True
 
 			for j in range(len(labels)):
 				if len(get_object_list(self.om)) + j != len(labels):
@@ -124,7 +126,7 @@ class DataCollection():
 				c_img, d_img = self.robot.get_img_data()
 				delete_object(labels[len(labels) - 1 - j], self.dm)
 				img_lst.insert(0, c_img)
-				time.sleep(0.1)
+				# time.sleep(0.1)
 				# cv2.imwrite(IMDIR+str(i+start)+'/rgb_{}.png'.format(str(len(labels) -1- j)), c_img)
 				# cv2.imwrite(IMDIR+str(i+start)+'/depth_{}.png'.format(str(len(labels) -1- j)), depth_scaled_to_255(np.array((d_img * 1000).astype(np.int16))))
 				if j == 0:
@@ -146,27 +148,36 @@ class DataCollection():
 			# with open(IMDIR+str(i+start)+"/labels.json", 'w') as f:
 			# 	json.dump(labels, f)
 
-			mask_lst = find_item_masks(img_lst, labels)
+			mask_lst, noshift = find_item_masks(img_lst, labels)
+			
+			if not noshift:
+				os.remove(IMDIR+'image_rgb/rgb_{}.png'.format(str(i+start)))
+				os.remove(IMDIR+'image_depth/depth_{}.png'.format(str(i+start)))
+				# print("shifting")
+				continue
 			compare, diff, seg_image, bb_image = draw_masks(mask_lst, all_items, labels, img_lst)
 
 
 
-			if diff > 640*480/100 or not delete_correct:
+			if diff > 640*480/300:
 				os.remove(IMDIR+'image_rgb/rgb_{}.png'.format(str(i+start)))
 				os.remove(IMDIR+'image_depth/depth_{}.png'.format(str(i+start)))
+				# print(diff)
 			else:
 				cv2.imwrite(IMDIR+'gt/compare_{}.png'.format(str(i+start)), compare)
 				cv2.imwrite(IMDIR+'image_labels/seg_{}.png'.format(str(i+start)), seg_image)
 				cv2.imwrite(IMDIR+'bbs/bb_{}.png'.format(str(i+start)), bb_image)
 				create_segment_label(IMDIR, str(i+start), labels, mask_lst)
+				# print(i+start, noshift)
+				i+=1
 
 			# shutil.rmtree(IMDIR+str(i+start))
-			time.sleep(0.5)
+			time.sleep(0.1)
+			print(i, total)
 
 			
 
-			if diff <= 640*480/100:
-				i+=1
+			
 			# i += 1
 
 			

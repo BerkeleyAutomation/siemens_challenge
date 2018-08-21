@@ -3,13 +3,15 @@ from gazebo_msgs.srv import DeleteModel, SpawnModel, GetWorldProperties
 from geometry_msgs.msg import *
 import xml.etree.ElementTree as et
 import time
+import math
 
 import random
 import numpy as np
 import re
 import os
 
-LIMIT = {'x':(-0.2, 0.2), 'y':(0.6, 1.0), 'rad':(0, 2*3.14)}
+LIMIT = {'x':(-0.2, 0.2), 'y':(0.5, 0.9), 'rad':(0, 2*3.14)}
+# MODEL_TYPE = {"openEndWrench": 3}
 
 MODEL_TYPE = {"lightbulb": 1, "gear": 2, "nozzle": 1, "screwdriver": 9, "tape": 2, "barClamp": 1, "combinationWrench": 15, "hammer": 1, "openEndWrench": 3, "socketWrench": 3, "adjustableWrench": 4, "tube": 1, "bottle": 9, "cup": 1, "mug": 3, "alarmClock":1, "bowl":1, "dolphin":1, "elephant":1, "pear":1, "pen":2, "scissors":2, "shoe":3, "apple":1, "banana":1, "duplo":5, "grape":1, "rectangularCube":3}
 
@@ -45,7 +47,7 @@ def get_object_list(object_monitor):
 
 def delete_object(name, delete_model):
     rospy.wait_for_service("gazebo/delete_model")
-    print("Deleting Object.")
+    # print("Deleting Object.")
     delete_model(name)
     rospy.wait_for_service("gazebo/delete_model")
     return name
@@ -59,9 +61,9 @@ def clean_floor(delete_model, object_monitor):
 def spawn_from_uniform(n, spawn_model):
     tags = []
 
-    sim_time = rospy.get_rostime().secs
-    real_time = time.time()
-    time_array = []
+    # sim_time = rospy.get_rostime().secs
+    # real_time = time.time()
+    # time_array = []
 
     for i in range(n):
         # item
@@ -79,15 +81,18 @@ def spawn_from_uniform(n, spawn_model):
         pose_lst = collision[2].text.split(" ")
 
         # pose
-        pt_x = np.random.uniform(LIMIT['x'][0], LIMIT['x'][1]) - float(pose_lst[0])
-        pt_y = np.random.uniform(LIMIT['y'][0], LIMIT['y'][1]) - float(pose_lst[1])
-        ei = np.random.uniform(LIMIT['rad'][0], LIMIT['rad'][1])
-        ej = np.random.uniform(LIMIT['rad'][0], LIMIT['rad'][1])
+        # pt_x = np.random.uniform(LIMIT['x'][0], LIMIT['x'][1]) - 1*float(pose_lst[0])
+        # pt_y = np.random.uniform(LIMIT['y'][0], LIMIT['y'][1]) - 1*float(pose_lst[1])
+        # ei = np.random.uniform(LIMIT['rad'][0], LIMIT['rad'][1])
+        # ej = np.random.uniform(LIMIT['rad'][0], LIMIT['rad'][1])
         ek = np.random.uniform(LIMIT['rad'][0], LIMIT['rad'][1])
-        quater = tf.transformations.quaternion_from_euler(ei, ej, ek)
+        pt_x = np.random.uniform(LIMIT['x'][0], LIMIT['x'][1]) - math.cos(ek)*float(pose_lst[0]) + math.sin(ek)*float(pose_lst[1])
+        pt_y = np.random.uniform(LIMIT['y'][0], LIMIT['y'][1]) - math.sin(ek)*float(pose_lst[0]) - math.cos(ek)*float(pose_lst[1])
+        # quater = tf.transformations.quaternion_from_euler(ei, ej, ek)
+        quater = tf.transformations.quaternion_from_euler(0, 0, ek)
         orient = Quaternion(quater[0], quater[1], quater[2], quater[3])
 
-        object_pose = Pose(Point(x=pt_x, y=pt_y, z=0.5), orient)
+        object_pose = Pose(Point(x=pt_x, y=pt_y, z=0), orient)
 
         # spawn
         object_name = model_tag+str(model_index)+"_"+str(model_paint)+"_"+str(model_scale) +"_" +str(i)
@@ -98,12 +103,11 @@ def spawn_from_uniform(n, spawn_model):
         tags.append(model_tag+str(model_index)+"_"+str(model_paint)+"_"+str(model_scale))
 
         # time logging
-        time_array.append([rospy.get_rostime().secs - sim_time, time.time() - real_time])
-        real_time = time.time()
-        sim_time = rospy.get_rostime().secs
+        # time_array.append([rospy.get_rostime().secs - sim_time, time.time() - real_time])
+        # real_time = time.time()
+        # sim_time = rospy.get_rostime().secs
 
-    return tags, np.array(time_array)
-
+    return tags
 # def spawn_from_gaussian(n, spawn_model):
 #     for i in range(n):
 #         # item
@@ -132,9 +136,9 @@ def spawn_from_uniform(n, spawn_model):
 if __name__ == '__main__':
     delete_model, spawn_model, object_monitor = setup_delete_spawn_service()
 
-    print(get_object_list(object_monitor))
+    # print(get_object_list(object_monitor))
 
     # spawn_from_uniform(10, spawn_model)
-    clean_floor(delete_model, object_monitor)
+    # clean_floor(delete_model, object_monitor)
     # spawn_from_gaussian(10, spawn_model)
 
