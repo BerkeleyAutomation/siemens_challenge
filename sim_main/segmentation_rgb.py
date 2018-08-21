@@ -112,20 +112,20 @@ def read_img(img_path):
 
 def extract_mask(gray):
 	ret, mask = cv2.threshold(gray, 2, 255, 0)
-	kernel = np.ones((3, 3), np.uint8)
+	# kernel = np.ones((3, 3), np.uint8)
 	# mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
-	mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+	# mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
 	im2, contours, hierarchy = cv2.findContours(mask, 1, 1)
 	areas = [cv2.contourArea(cnt) for cnt in contours]
 	# print(areas)
 	moments = [[cv2.moments(cnt), cnt] for cnt in contours if cv2.contourArea(cnt) > 0]
 	centroids = [(int(M[0]['m10']/M[0]['m00']), int(M[0]['m01']/M[0]['m00'])) for M in moments]
 
-	for i in range(len(moments)):
-		if centroids[i][0] < 10 or mask.shape[1] - centroids[i][0] < 10 or centroids[i][1] < 10 or mask.shape[0] - centroids[i][1] < 10 or cv2.contourArea(moments[i][1]) < 200:
-			cv2.drawContours(mask, [moments[i][1]], 0, (0, 0, 0), -1)
+	for i in range(len(contours)):
+		if areas[i] < 20:
+			cv2.drawContours(mask, [contours[i]], 0, (0, 0, 0), -1)
 		else:
-			cv2.drawContours(mask, [moments[i][1]], 0, (255, 255, 255), -1)
+			cv2.drawContours(mask, [contours[i]], 0, (255, 255, 255), -1)
 
 	# cv2.imwrite("test.png", mask)
 	return mask
@@ -279,7 +279,7 @@ def find_item_masks(img_lst, label_lst):
 			else:
 				cv2.drawContours(curr_mask, [contours[i]], 0, (255, 255, 255), -1)
 
-		if np.sum(cv2.absdiff(cv2.add(mask, prev_mask), curr_mask))/255 > 180:
+		if np.sum(cv2.absdiff(cv2.add(mask, prev_mask), curr_mask))/255 > 150:
 			noshift = False
 	# print(len(masks))
 
