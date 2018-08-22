@@ -10,7 +10,7 @@ import numpy as np
 import re
 import os
 
-LIMIT = {'x':(-0.2, 0.2), 'y':(0.5, 0.9), 'rad':(0, 2*3.14)}
+LIMIT = {'x':(-0.2, 0.2), 'y':(0.6, 0.9), 'rad':(0, 2*3.14)}
 # MODEL_TYPE = {"openEndWrench": 3}
 
 MODEL_TYPE = {"lightbulb": 1, "gear": 2, "nozzle": 1, "screwdriver": 9, "tape": 2, "barClamp": 1, "combinationWrench": 15, "hammer": 1, "openEndWrench": 3, "socketWrench": 3, "adjustableWrench": 4, "tube": 1, "bottle": 9, "cup": 1, "mug": 3, "alarmClock":1, "bowl":1, "dolphin":1, "elephant":1, "pear":1, "pen":2, "scissors":2, "shoe":3, "apple":1, "banana":1, "duplo":5, "grape":1, "rectangularCube":3}

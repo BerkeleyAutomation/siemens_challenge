@@ -2,9 +2,15 @@ import xml.etree.ElementTree as et
 import numpy as np
 import trimesh
 import os
+import math
 
-SLICE_UPPERBOUND = 0.01
-MIN_EDGE_UPPERBOUND = 0.10
+SLICE_UPPERBOUND = 0.008
+MIN_EDGE_UPPERBOUND = 0.08
+
+SLICE_LOWERBOUND = 0.003
+MIN_EDGE_LOWERBOUND = 0.005
+RIDGE_LOWERBOUND = 0.1
+
 
 SIZES = np.arange(0.8, 1.3, 0.1)
 
@@ -36,6 +42,11 @@ def parse_box(filename, scale, new_model_name):
 
 	while scale * np.min(raw_box) > MIN_EDGE_UPPERBOUND or scale ** 2 * np.min(raw_box) * np.median(raw_box) > SLICE_UPPERBOUND:
 		scale -= 0.1
+
+	while scale * np.min(raw_box) < MIN_EDGE_LOWERBOUND or scale ** 2 * np.min(raw_box) * np.median(raw_box) < SLICE_LOWERBOUND or \
+		scale * math.sqrt(x_size**2+y_size**2+z_size**2) < RIDGE_LOWERBOUND:
+		print(scale)
+		scale += 0.1
 
 	mass = root[0][0][1][0]
 	mass.text = str(0.5)
