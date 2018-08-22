@@ -112,9 +112,9 @@ def read_img(img_path):
 
 def extract_mask(gray):
 	ret, mask = cv2.threshold(gray, 2, 255, 0)
-	kernel = np.ones((3, 3), np.uint8)
+	# kernel = np.ones((3, 3), np.uint8)
 	# mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
-	mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+	# mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
 	im2, contours, hierarchy = cv2.findContours(mask, 1, 1)
 	areas = [cv2.contourArea(cnt) for cnt in contours]
 	# print(areas)

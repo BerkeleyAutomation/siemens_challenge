@@ -64,7 +64,7 @@ class DataCollection():
 		# IMDIR = 'sim_data/test/'
 		# time_sum = []
 		#IMDIR = 'sim_data/test_floorplan/'
-		IMDIR="sim_data/dataset_08_20_2018/"
+		IMDIR="sim_data/dataset_08_20_2018_3/"
 
 		if not os.path.exists(IMDIR):
 			os.makedirs(IMDIR)
@@ -192,7 +192,8 @@ class DataCollection():
 
 
 if __name__ == "__main__":
-	DataCollection().collect(dataset_size=30)
+	DataCollection().collect(dataset_size=50)
+
 
 
 
