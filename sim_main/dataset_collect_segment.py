@@ -64,7 +64,7 @@ class DataCollection():
 		# IMDIR = 'sim_data/test/'
 		# time_sum = []
 		#IMDIR = 'sim_data/test_floorplan/'
-		IMDIR="sim_data/dataset_08_21_2018/"
+		IMDIR="sim_data/dataset_08_22_2018_2/"
 
 		if not os.path.exists(IMDIR):
 			os.makedirs(IMDIR)
@@ -87,16 +87,12 @@ class DataCollection():
 
 		i = 0
 		total = 0
+		reject1 = 0
+		reject2 = 0
+		reject3 = 0
 
 		while i < dataset_size:
-			total += 1
-			print(i+start)
-			
-			# if not os.path.exists(IMDIR+str(i+start)):
-			# 	os.makedirs(IMDIR+str(i+start))
-
-			time.sleep(0.1)
-			if i%10 == 0:
+			if total%10 == 0:
 				self.dm, self.sm, self.om = setup_delete_spawn_service()
 
 				print "Reinitialized spawning service"
@@ -106,8 +102,19 @@ class DataCollection():
 				self.ra.go_to_start_position()
 				self.ra.go_to_start_pose()
 
+			print(i, total, reject1, reject2, reject3)
+
+			total += 1
+
+			print(i+start)
 			
+			# if not os.path.exists(IMDIR+str(i+start)):
+			# 	os.makedirs(IMDIR+str(i+start))
+
 			time.sleep(0.1)
+
+
+			# time.sleep(0.1)
 
 			n = np.random.randint(5, 15)
 			# n=1
@@ -148,20 +155,31 @@ class DataCollection():
 			# with open(IMDIR+str(i+start)+"/labels.json", 'w') as f:
 			# 	json.dump(labels, f)
 
-			mask_lst, noshift = find_item_masks(img_lst, labels)
+			mask_lst, noshift, nooverlap = find_item_masks(img_lst, labels)
+
+			if len(get_object_list(self.om)) > 0:
+				sys.exit()
 			
 			if not noshift:
 				os.remove(IMDIR+'image_rgb/rgb_{}.png'.format(str(i+start)))
 				os.remove(IMDIR+'image_depth/depth_{}.png'.format(str(i+start)))
 				# print("shifting")
+				reject1 += 1
 				continue
-			compare, diff, seg_image, bb_image = draw_masks(mask_lst, all_items, labels, img_lst)
+			if not nooverlap:
+				os.remove(IMDIR+'image_rgb/rgb_{}.png'.format(str(i+start)))
+				os.remove(IMDIR+'image_depth/depth_{}.png'.format(str(i+start)))
+				# print("shifting")
+				reject2 += 1
+				continue
+			compare, diff, seg_image, bb_image, valid_label = draw_masks(mask_lst, all_items, labels, img_lst)
 
 
 
 			if diff > 640*480/300:
 				os.remove(IMDIR+'image_rgb/rgb_{}.png'.format(str(i+start)))
 				os.remove(IMDIR+'image_depth/depth_{}.png'.format(str(i+start)))
+				reject3 += 1
 				# print(diff)
 			else:
 				cv2.imwrite(IMDIR+'gt/compare_{}.png'.format(str(i+start)), compare)
@@ -173,7 +191,7 @@ class DataCollection():
 
 			# shutil.rmtree(IMDIR+str(i+start))
 			time.sleep(0.1)
-			print(i, total)
+			# print(i, total, reject1, reject2)
 
 			
 

@@ -226,6 +226,7 @@ def find_contour_and_bounding_box(mask):
 def find_item_masks(img_lst, label_lst):
 	masks = []
 	noshift = True
+	nooverlap = True
 	
 	# print(lst)
 	item_num = len(label_lst)
@@ -245,9 +246,9 @@ def find_item_masks(img_lst, label_lst):
 		
 		ret, mask = cv2.threshold(gray, 2, 255, 0)
 		
-		masks.append(reduce_noice(mask))
+		masks.append(reduce_noice(mask)) #reduce noise close down contours and merge masks if need be
 
-		# validate masks
+		# validate masks -- previous image and the background
 		prev_diff = find_curr_img(prev_img, img_lst[-1])
 		ret, prev_diff = cv2.threshold(prev_diff, 20, 255, 0)
 		prev_gray = cv2.cvtColor(prev_diff, cv2.COLOR_RGB2GRAY)
@@ -263,7 +264,7 @@ def find_item_masks(img_lst, label_lst):
 			else:
 				cv2.drawContours(prev_mask, [contours[i]], 0, (255, 255, 255), -1)
 
-
+		# current image and the background -- current image differs from previous image by one object
 		curr_diff = find_curr_img(curr_img, img_lst[-1])
 		ret, curr_diff = cv2.threshold(curr_diff, 20, 255, 0)
 		curr_gray = cv2.cvtColor(curr_diff, cv2.COLOR_RGB2GRAY)
@@ -279,11 +280,13 @@ def find_item_masks(img_lst, label_lst):
 			else:
 				cv2.drawContours(curr_mask, [contours[i]], 0, (255, 255, 255), -1)
 
-		if np.sum(cv2.absdiff(cv2.add(mask, prev_mask), curr_mask))/255 > 150:
+		if np.sum(cv2.absdiff(cv2.add(mask, prev_mask), curr_mask))/255 > 900:
 			noshift = False
+		if np.sum(cv2.absdiff(cv2.subtract(curr_mask, mask), prev_mask))/255 > 1700:
+			nooverlap = False
 	# print(len(masks))
 
-	return masks, noshift
+	return masks, noshift, nooverlap
 
 def draw_masks(mask_lst, all_item_img, label_lst, img_lst):
 
@@ -300,10 +303,11 @@ def draw_masks(mask_lst, all_item_img, label_lst, img_lst):
 	pure_img = extract_mask(gray)
 
 	count = 1
+	valid_label = True
 
-	blank = np.zeros(img.shape, img.dtype)
-	blank2 = np.zeros(pure_img.shape, pure_img.dtype)
-	blank3 = np.zeros(pure_img.shape, pure_img.dtype)
+	blank = np.zeros(img.shape, img.dtype) # colored masks for all objects
+	blank2 = np.zeros(pure_img.shape, pure_img.dtype) # white masks for all objects
+	blank3 = np.zeros(pure_img.shape, pure_img.dtype) # masks with pixel value corresponds to the SEG_LABEL dictionary for all objects
 	for i in range(item_num):
 
 		class_label = re.split('(\d+)', label_lst[i])[0]
@@ -313,6 +317,7 @@ def draw_masks(mask_lst, all_item_img, label_lst, img_lst):
 	
 		if not bb is None:
 			test_bb = cv2.rectangle(img2,(bb[0],bb[1]),(bb[2],bb[3]),(count % 3 * 127,(count // 3) % 3 * 127, (count // 9) % 3 * 127),2)
+			valid_label = False
 
 		color = np.zeros(img.shape, img.dtype)
 		color[:,:] = (count % 3 * 127,(count // 3) % 3 * 127, (count // 9) % 3 * 127)
@@ -343,7 +348,7 @@ def draw_masks(mask_lst, all_item_img, label_lst, img_lst):
 	abs_diff = cv2.absdiff(blank2, pure_img)
 	print(abs_diff.sum() / 255)
 	# return img, abs_diff.sum() / 255, cv2.subtract(6, blank2)
-	return img, abs_diff.sum() / 255, cv2.subtract(6, blank3), img2
+	return img, abs_diff.sum() / 255, cv2.subtract(6, blank3), img2, valid_label
 
 
 def create_segment_label(folder_base, label_index, label_lst, mask_lst):

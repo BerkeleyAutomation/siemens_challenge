@@ -50,6 +50,7 @@ def delete_object(name, delete_model):
     # print("Deleting Object.")
     delete_model(name)
     rospy.wait_for_service("gazebo/delete_model")
+    # print("finished deleting")
     return name
 
 def clean_floor(delete_model, object_monitor):
@@ -92,7 +93,7 @@ def spawn_from_uniform(n, spawn_model):
         quater = tf.transformations.quaternion_from_euler(0, 0, ek)
         orient = Quaternion(quater[0], quater[1], quater[2], quater[3])
 
-        object_pose = Pose(Point(x=pt_x, y=pt_y, z=0), orient)
+        object_pose = Pose(Point(x=pt_x, y=pt_y, z=0.5), orient)
 
         # spawn
         object_name = model_tag+str(model_index)+"_"+str(model_paint)+"_"+str(model_scale) +"_" +str(i)

@@ -6,10 +6,11 @@ import math
 
 SLICE_UPPERBOUND = 0.008
 MIN_EDGE_UPPERBOUND = 0.08
+MAX_EDGE_UPPERBOUND = 0.3
 
 SLICE_LOWERBOUND = 0.003
-MIN_EDGE_LOWERBOUND = 0.005
-RIDGE_LOWERBOUND = 0.1
+# MIN_EDGE_LOWERBOUND = 0.005
+RIDGE_LOWERBOUND = 0.3
 
 
 SIZES = np.arange(0.8, 1.3, 0.1)
@@ -39,14 +40,12 @@ def parse_box(filename, scale, new_model_name):
 	raw_box = np.max(np.diff(mesh.bounding_box.vertices, axis=0), axis=0)
 
 	x_size, y_size, z_size = raw_box
-
-	while scale * np.min(raw_box) > MIN_EDGE_UPPERBOUND or scale ** 2 * np.min(raw_box) * np.median(raw_box) > SLICE_UPPERBOUND:
-		scale -= 0.1
-
-	while scale * np.min(raw_box) < MIN_EDGE_LOWERBOUND or scale ** 2 * np.min(raw_box) * np.median(raw_box) < SLICE_LOWERBOUND or \
-		scale * math.sqrt(x_size**2+y_size**2+z_size**2) < RIDGE_LOWERBOUND:
+	while scale ** 2 * np.min(raw_box) * np.median(raw_box) < SLICE_LOWERBOUND or scale * math.sqrt(x_size**2+y_size**2+z_size**2) < RIDGE_LOWERBOUND:
 		print(scale)
 		scale += 0.1
+	while scale * np.min(raw_box) > MIN_EDGE_UPPERBOUND or scale ** 2 * np.min(raw_box) * np.median(raw_box) > SLICE_UPPERBOUND or scale * np.max(raw_box) > MAX_EDGE_UPPERBOUND:
+		scale -= 0.1
+
 
 	mass = root[0][0][1][0]
 	mass.text = str(0.5)
