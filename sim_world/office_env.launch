@@ -11,7 +11,7 @@
     <arg name="use_teleop" default="false" />
     <arg name="use_web" default="false" />
     <arg name="gazebo_visualization" default="false" />
-    <arg name="gui" default="false" />
+    <arg name="gui" default="true" />
     <arg name="rviz" default="false" />
   </include>
   <param name="use_sim_time" value="true" />
