@@ -118,7 +118,7 @@ class Robot_Actions():
     def execute_grasp(self, cm, dir_vec, d_img, class_num):
         pose_name = self.img_coords2pose(cm, dir_vec, d_img)
         self.grasp_at_pose(pose_name)
-        # self.deposit_obj(class_num)
+        self.deposit_obj(class_num%3)
 
     def spread_singulate(self, cm, dir_vec, d_img):
         pose_name = self.img_coords2pose(cm, dir_vec, d_img)

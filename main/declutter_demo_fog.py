@@ -175,9 +175,14 @@ class DeclutterDemo():
             time.sleep(2)  # make sure new image is written before being read
 
             main_mask = crop_img(c_img, simple=True)
-            col_img = ColorImage(c_img)
-            workspace_img = col_img.mask_binary(main_mask)
 
+            cv2.imwrite('debug_imgs/main_mask.png', main_mask.data)
+            col_img = ColorImage(c_img)
+            cv2.imwrite('debug_imgs/color_image.png', col_img.data)
+            workspace_img = col_img.mask_binary(main_mask)
+            cv2.imwrite('debug_imgs/workspace_img.png', workspace_img.data)
+            # import ipdb; ipdb.set_trace()
+            # import ipdb; ipdb.set_trace()
             bboxes, vectors, vis_util_image = self.get_bboxes(path, col_img)
 
             if len(bboxes) > 0:
