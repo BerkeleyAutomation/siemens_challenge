@@ -17,11 +17,14 @@ CHAIN_GRASPS = False
 
 """TABLE SETUP SPECIFIC VALUES"""
 
-labels = ["Screwdriver", "Scrap", "Tube", "Tape"] #ensure this matches server.py in hsr_web
+# labels = ["Screwdriver", "Scrap", "Tube", "Tape"] #ensure this matches server.py in hsr_web
+labels = ["utility", "bottle", "cup", "fruit", "assemblyPart", "hammer", "scissors", "screwdriver", "tape", "toy", "tube", "wrench"]
+
 # HUES_TO_BINS = {"cyan": 0 , "blue": 1, "green-yellow": 2, "green": 3, "yellow": 4, "red": 5, "orange": 6, "black": 7}
 HUES_TO_BINS = {'red':0, 'cyan': 1, 'yellow': 2, 'orange': 2}
 
-net_labels = {1: "Tube", 2: "Scrap", 3: "Screwdriver", 4: "Tape"}
+# net_labels = {1: "Tube", 2: "Scrap", 3: "Screwdriver", 4: "Tape"}
+net_labels = {1: "utility", 2: "bottle", 3: "cup", 4: "fruit", 5: "assemblyPart", 6: "hammer", 7: "scissors", 8: "screwdriver", 9: "tape", 10: "toy", 11: "tube", 12: "wrench"}
 CONFIDENCE_THRESH = 0.3
 EVALUATE = False
 ISOLATED_TOL = 100

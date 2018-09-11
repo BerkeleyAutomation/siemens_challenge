@@ -199,6 +199,8 @@ class DeclutterDemo():
                     groups = [box.to_group(c_img, col_img) for box in bboxes]
                     groups = merge_groups(groups, cfg.DIST_TOL)
                     singulator = Singulation(col_img, main_mask, [g.mask for g in groups])
+                    import ipdb;
+                    ipdb.set_trace()
                     self.run_singulate(singulator, d_img)
                     sing_start = time.time()
                     # singulation_success = self.dl.record_success("singulation", other_data=[c_img, vis_util_image, d_img])
