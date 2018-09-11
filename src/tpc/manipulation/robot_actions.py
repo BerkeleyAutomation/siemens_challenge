@@ -14,7 +14,7 @@ class Robot_Actions():
 
     def go_to_start_pose(self):
         self.robot.body_start_pose()
-        # self.robot.close_gripper()
+        self.robot.close_gripper()
         self.safe_wait()
 
     def head_start_pose(self):

@@ -27,8 +27,8 @@ class Detector():
         sys.path.append("..")
         from object_detection.utils import ops as utils_ops
 
-        if tf.__version__ < '1.4.0':
-            raise ImportError('Please upgrade your tensorflow installation to v1.4.* or later!')
+        # if tf.__version__ < '1.4.0':
+        #     raise ImportError('Please upgrade your tensorflow installation to v1.4.* or later!')
 
 
         # What model to download.
@@ -109,8 +109,6 @@ class Detector():
     def predict(self, image_path, thresh=.5):
         image = Image.open(image_path)
         IMAGE_SIZE = (6, 4)
-
-
 
         image_np = load_image_into_numpy_array(image)
 
