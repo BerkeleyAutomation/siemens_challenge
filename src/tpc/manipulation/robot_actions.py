@@ -72,13 +72,15 @@ class Robot_Actions():
     def grasp_at_pose(self, pose_name):
         self.robot.open_gripper()
         self.robot.move_to_pose(pose_name, 0.1)
-        self.robot.move_to_pose(pose_name, 0.022)
+        # self.robot.move_to_pose(pose_name, 0.022)
+        self.robot.move_to_pose(pose_name, 0.015)
         self.robot.close_gripper()
-        self.robot.move_to_pose(pose_name, 0.1)
+        self.robot.move_to_pose(pose_name, 0.2)
         # self.robot.move_to_pose(pose_name, 0.2)
         # self.robot.move_to_pose(pose_name, 0.1)
 
     def deposit_obj(self, class_num):
+        # import ipdb; ipdb.set_trace()
         if class_num is None:
             #go to a temporary pose for the bins
             self.go_to_start_position(offsets=[-0.5, 0, 0])
@@ -89,12 +91,16 @@ class Robot_Actions():
             # self.robot.tilt_head(tilt=-0.4)
             found = False
             i = 0
+            self.robot.pan_head(-1.2)
             while not found and i < 10:
-                found = self.robot.find_ar(class_num + 12) #AR numbers from 8 to 11
+                found = self.robot.find_ar(class_num + 8) #AR numbers from 8 to 11
                 if not found:
                     print(i)
-                    curr_tilt = -1 + (i * 1.0)/2.0 #ranges from -1 to 1
-                    self.robot.pan_head(curr_tilt)
+                    # if i == 0:
+                    curr_tilt = -1.0 + (i * 0.1)/2.0 #ranges from -1 to 1
+                    self.robot.tilt_head(curr_tilt)
+                    # self.robot.pan_head(curr_tilt)
+
                     i += 1
             if not found:
                 print("Could not find AR marker- depositing object in default position.")
@@ -104,6 +110,44 @@ class Robot_Actions():
         self.robot.open_gripper()
         self.robot.close_gripper()
         self.move_base(x=-0.1)
+        self.safe_wait()
+
+    def deposit_obj_fake_ar(self, class_num):
+        # import ipdb; ipdb.set_trace()
+        if class_num is None:
+            #go to a temporary pose for the bins
+            self.go_to_start_position(offsets=[-0.5, 0, 0])
+        else:
+            # print("Class is " + cfg.labels[class_num])
+            print("Class is " + str(class_num))
+            # self.robot.pan_head()
+            # self.robot.tilt_head(tilt=-0.4)
+
+            marker_name = 'fake_ar'+str(class_num)
+            self.robot.move_to_fake_ar(ar_name=marker_name)
+
+            # found = False
+            # i = 0
+            # self.robot.pan_head(-1.2)
+            # while not found and i < 10:
+            #     found = self.robot.find_ar(class_num + 8) #AR numbers from 8 to 11
+            #     if not found:
+            #         print(i)
+            #         # if i == 0:
+            #         curr_tilt = -1.0 + (i * 0.1)/2.0 #ranges from -1 to 1
+            #         self.robot.tilt_head(curr_tilt)
+            #         # self.robot.pan_head(curr_tilt)
+            #
+            #         i += 1
+            # if not found:
+            #     print("Could not find AR marker- depositing object in default position.")
+            #     self.go_to_start_position(offsets=[-0.5, 0, 0])
+
+        # self.move_base(x=0.1)
+        self.robot.open_gripper()
+        self.robot.close_gripper()
+        # self.move_base(x=-0.1)
+        self.safe_wait()
 
     def deposit_in_cubby(self):
         self.robot.move_in_cubby()
@@ -118,7 +162,9 @@ class Robot_Actions():
     def execute_grasp(self, cm, dir_vec, d_img, class_num):
         pose_name = self.img_coords2pose(cm, dir_vec, d_img)
         self.grasp_at_pose(pose_name)
-        self.deposit_obj(class_num%3)
+        # self.deposit_obj(class_num%3)
+        self.deposit_obj_fake_ar(class_num % 3)
+
 
     def spread_singulate(self, cm, dir_vec, d_img):
         pose_name = self.img_coords2pose(cm, dir_vec, d_img)

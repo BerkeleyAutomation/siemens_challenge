@@ -3,9 +3,12 @@ import IPython
 import time
 import matplotlib.pyplot as plt
 import numpy as np
+import rospy
 from copy import deepcopy
 import sys
-
+import thread
+import tf
+from hsrb_interface import geometry
 from tpc.perception.cluster_registration import run_connected_components, display_grasps, class_num_to_name, \
     grasps_within_pile, hsv_classify
 from tpc.perception.groups import Group
@@ -18,6 +21,7 @@ from tpc.manipulation.robot_actions import Robot_Actions
 from tpc.data.helper import Helper
 from tpc.data.data_logger import DataLogger
 import tpc.config.config_tpc as cfg
+from visualization_msgs.msg import Marker
 
 from tpc.detection.detector import Detector
 # from tpc.detection.maskrcnn_detection import detect
@@ -67,7 +71,41 @@ class DeclutterDemo():
 
         self.viz = viz
 
+        # rospy.init_node('main_demo', anonymous=True)
+        # self.subscriber = rospy.Subscriber("/ar_marker", Marker, self.ar_marker_callback, queue_size=1)
+        self.fake_ar_marker()
+
         print("Finished Initialization")
+
+    # def ar_marker_callback(self, Marker):
+    #
+    #     print('received image of type: "%s"' % Marker.format)
+    #     import ipdb; ipdb.set_trace()
+
+
+    def fake_ar_marker(self):
+        ai = 0.0
+        aj = np.pi
+        ak = 0.0
+        ar_rot = tf.transformations.quaternion_from_euler(ai=ai, aj=aj, ak=ak)
+
+        ar_pos = [0.8, -0.4, 0.3]
+
+        name = 'fake_ar'
+        ref = 'map'
+
+        for i in range(4):
+            name = 'fake_ar' + str(i)
+            ar_pos[1] += 0.2
+            new_ar_pos = np.copy(ar_pos)
+            print(new_ar_pos)
+            thread.start_new_thread(self.loop_broadcast, (new_ar_pos, ar_rot, name, ref))
+
+
+    def loop_broadcast(self, pos, rot, name, ref):
+        while True:
+            self.robot.br.sendTransform(pos, rot, rospy.Time.now(), name, ref)
+
 
     def run_grasp(self, bbox, c_img, col_img, workspace_img, d_img):
         print("Grasping a " + cfg.labels[bbox.label])
@@ -168,6 +206,17 @@ class DeclutterDemo():
         # import ipdb;ipdb.set_trace()
         self.ra.go_to_start_pose()
         c_img, d_img = self.robot.get_img_data()
+        # self.wait()
+        # self.wait()
+        # import ipdb;
+        # ipdb.set_trace()
+        #
+        # self.robot.whole_body.linear_weight = 10.0
+        # self.robot.whole_body.move_end_effector_pose(geometry.pose(), 'fake_ar3')
+
+        # self.robot.omni_base.go_pose(geometry.pose(), 300.0, ref_frame_id='fake_ar')
+
+        # import ipdb; ipdb.set_trace()
 
         while not (c_img is None or d_img is None):
             path = 'debug_imgs/web.png'
@@ -181,8 +230,7 @@ class DeclutterDemo():
             cv2.imwrite('debug_imgs/color_image.png', col_img.data)
             workspace_img = col_img.mask_binary(main_mask)
             cv2.imwrite('debug_imgs/workspace_img.png', workspace_img.data)
-            # import ipdb; ipdb.set_trace()
-            # import ipdb; ipdb.set_trace()
+
             bboxes, vectors, vis_util_image = self.get_bboxes(path, col_img)
 
             if len(bboxes) > 0:
@@ -196,16 +244,15 @@ class DeclutterDemo():
                 if len(single_objs) > 0:
                     to_grasp = select_first_obj(single_objs)
                     singulation_time = 0.0
-                    import ipdb; ipdb.set_trace()
                     self.run_grasp(to_grasp, c_img, col_img, workspace_img, d_img)
                     # grasp_success = self.dl.record_success("grasp", other_data=[c_img, vis_util_image, d_img])
+                    # import ipdb; ipdb.set_trace()
                 else:
                     # for accurate singulation should have bboxes for all
                     groups = [box.to_group(c_img, col_img) for box in bboxes]
                     groups = merge_groups(groups, cfg.DIST_TOL)
                     singulator = Singulation(col_img, main_mask, [g.mask for g in groups])
-                    import ipdb;
-                    ipdb.set_trace()
+                    # import ipdb; ipdb.set_trace()
                     self.run_singulate(singulator, d_img)
                     sing_start = time.time()
                     # singulation_success = self.dl.record_success("singulation", other_data=[c_img, vis_util_image, d_img])
@@ -359,8 +406,8 @@ if __name__ == "__main__":
         DEBUG = True
     else:
         DEBUG = False
-
     task = DeclutterDemo(viz=True)
+    # rospy.spin()
     simple = False
     if simple:
         task.lego_demo()
