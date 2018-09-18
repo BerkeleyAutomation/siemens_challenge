@@ -27,7 +27,7 @@ HUES_TO_BINS = {'red':0, 'cyan': 1, 'yellow': 2, 'orange': 2}
 net_labels = {1: "utility", 2: "bottle", 3: "cup", 4: "fruit", 5: "assemblyPart", 6: "hammer", 7: "scissors", 8: "screwdriver", 9: "tape", 10: "toy", 11: "tube", 12: "wrench"}
 CONFIDENCE_THRESH = 0.3
 EVALUATE = False
-ISOLATED_TOL = 100
+ISOLATED_TOL = 60
 
 ASKING_FOR_HELP_POLICY = "NO_HELP" #Options: "NO HELP", "SIMPLE", "MODEL_BASED"
 NUM_ROBOTS_ON_NETWORK = 1
@@ -36,6 +36,7 @@ NUM_ROBOTS_ON_NETWORK = 1
 #CONENCTED COMPONENTS ALG PARAMETERS
 #number of pixels apart to be singulated
 DIST_TOL = 25
+# DIST_TOL = 200
 #background range for thresholding the image
 COLOR_TOL = 34
 #number of pixels necssary for a cluster

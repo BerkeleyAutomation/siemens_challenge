@@ -74,7 +74,8 @@ class Web_Labeler:
 
 			print "Desired Robot: " + str(self.robot_id)
 			print "Queued Robot: " + str(robot)
-			frame = img_path
+			frame = os.getcwd() + "/" + img_path
+			# import ipdb; ipdb.set_trace()
 			label_data = self.label(frame)
 			print("Label Data: ",label_data)
 			print("Time:" , float(label_data['time'])/1000.0)

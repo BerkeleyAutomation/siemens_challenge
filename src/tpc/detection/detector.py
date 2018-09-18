@@ -62,6 +62,26 @@ class Detector():
         PATH_TO_TEST_IMAGES_DIR = 'test_images'
         TEST_IMAGE_PATHS = [ os.path.join(PATH_TO_TEST_IMAGES_DIR, 'image{}.jpg'.format(i)) for i in range(7, 8) ]
 
+        def run_inference_for_single_image_optimized(image, sess):
+            # Get handles to input and output tensors
+            ops = tf.get_default_graph().get_operations()
+            all_tensor_names = {output.name for op in ops for output in op.outputs}
+            tensor_dict = {}
+            for key in [
+                'num_detections', 'detection_boxes', 'detection_scores',
+                'detection_classes', 'detection_masks'
+            ]:
+                tensor_name = key + ':0'
+                if tensor_name in all_tensor_names:
+                    tensor_dict[key] = tf.get_default_graph().get_tensor_by_name(
+                        tensor_name)
+
+            image_tensor = tf.get_default_graph().get_tensor_by_name('image_tensor:0')
+
+            output_dict = sess.run(tensor_dict,
+                                   feed_dict={image_tensor: np.expand_dims(image, 0)})
+
+            return output_dict
 
         def run_inference_for_single_image(image, graph):
             with graph.as_default():
@@ -105,8 +125,9 @@ class Detector():
             return output_dict
 
         self.run_inference_for_single_image = run_inference_for_single_image
+        self.run_inference_for_single_image_optimized = run_inference_for_single_image_optimized
 
-    def predict(self, image_path, thresh=.5):
+    def predict(self, image_path, thresh=.5, sess=None):
         image = Image.open(image_path)
         IMAGE_SIZE = (6, 4)
 
@@ -114,7 +135,10 @@ class Detector():
 
         image_np_expanded = np.expand_dims(image_np, axis=0)
         start_time = timer.time()
-        output_dict = self.run_inference_for_single_image(image_np, self.detection_graph)
+        if sess is None:
+            output_dict = self.run_inference_for_single_image(image_np, self.detection_graph)
+        else:
+            output_dict = self.run_inference_for_single_image_optimized(image_np,sess)
         end_time = timer.time()
         print("final time: " + str(end_time - start_time))
         # Visualization of the results of a detection.

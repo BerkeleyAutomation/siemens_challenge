@@ -72,8 +72,11 @@ class Robot_Actions():
     def grasp_at_pose(self, pose_name):
         self.robot.open_gripper()
         self.robot.move_to_pose(pose_name, 0.1)
-        # self.robot.move_to_pose(pose_name, 0.022)
-        self.robot.move_to_pose(pose_name, 0.015)
+        self.robot.move_to_pose(pose_name, 0.022)
+        # self.robot.move_to_pose(pose_name, 0.019)
+        # time.sleep(1)
+        # self.robot.move_to_pose(pose_name, 0.015)
+        # self.robot.move_to_pose(pose_name, 0.01)
         self.robot.close_gripper()
         self.robot.move_to_pose(pose_name, 0.2)
         # self.robot.move_to_pose(pose_name, 0.2)
@@ -163,7 +166,7 @@ class Robot_Actions():
         pose_name = self.img_coords2pose(cm, dir_vec, d_img)
         self.grasp_at_pose(pose_name)
         # self.deposit_obj(class_num%3)
-        self.deposit_obj_fake_ar(class_num % 3)
+        self.deposit_obj_fake_ar(class_num % 4)
 
 
     def spread_singulate(self, cm, dir_vec, d_img):
@@ -177,12 +180,13 @@ class Robot_Actions():
 
     def execute_singulate(self, waypoints, rot, d_img):
         self.robot.close_gripper()
-
+        # import ipdb; ipdb.set_trace()
         pose_names = [self.img_coords2pose(waypoint, None, d_img, rot=rot) for waypoint in waypoints]
 
         self.robot.move_to_pose(pose_names[0], 0.05)
 
         for pose_name in pose_names:
-            self.robot.move_to_pose(pose_name, 0.03)
+            self.robot.move_to_pose(pose_name, 0.04)
 
-        self.robot.move_to_pose(pose_names[-1], 0.05)
+        self.robot.move_to_pose(pose_names[-1], 0.04)
+        self.robot.move_to_pose(pose_names[-1], 0.15)

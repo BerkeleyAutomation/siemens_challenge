@@ -21,6 +21,7 @@ from tpc.manipulation.robot_actions import Robot_Actions
 from tpc.data.helper import Helper
 from tpc.data.data_logger import DataLogger
 import tpc.config.config_tpc as cfg
+import tensorflow
 from visualization_msgs.msg import Marker
 
 from tpc.detection.detector import Detector
@@ -57,10 +58,11 @@ class DeclutterDemo():
         Class that runs decluttering task
         """
         self.robot = Robot_Interface()
-        # # self.helper = Helper(cfg)
+        self.helper = Helper(cfg)
         self.ra = Robot_Actions(self.robot)
-        # # self.dl = DataLogger("stats_data/model_base", cfg.EVALUATE)
-        # self.web = Web_Labeler(cfg.NUM_ROBOTS_ON_NETWORK)
+        self.dl = DataLogger("stats_data/model_base", cfg.EVALUATE)
+        # self.dl = DataLogger("stats_data/model_base")
+        self.web = Web_Labeler(cfg.NUM_ROBOTS_ON_NETWORK)
         self.maskrcnn = maskrcnn
 
         # self.maskrcnn = maskrcnn
@@ -89,7 +91,7 @@ class DeclutterDemo():
         ak = 0.0
         ar_rot = tf.transformations.quaternion_from_euler(ai=ai, aj=aj, ak=ak)
 
-        ar_pos = [0.8, -0.4, 0.3]
+        ar_pos = [0.8, -0.4, 0.35]
 
         name = 'fake_ar'
         ref = 'map'
@@ -124,9 +126,9 @@ class DeclutterDemo():
         singulator.display_singulation()
         self.ra.execute_singulate(waypoints, rot, d_img)
 
-    def get_bboxes_from_net(self, path):
+    def get_bboxes_from_net(self, path, sess=None):
         if not self.maskrcnn:
-            output_dict, vis_util_image = self.det.predict(path)
+            output_dict, vis_util_image = self.det.predict(path, sess)
             plt.savefig('debug_imgs/predictions.png')
             plt.close()
             plt.clf()
@@ -166,17 +168,18 @@ class DeclutterDemo():
             single_objs = find_isolated_objects_by_distance(bboxes, col_img)
             return len(single_objs) == 0
 
-    def get_bboxes(self, path, col_img):
-        boxes, vis_util_image = self.get_bboxes_from_net(path)
+    def get_bboxes(self, path, col_img, sess=None):
+        boxes, vis_util_image = self.get_bboxes_from_net(path,sess)
         vectors = []
 
+        # import ipdb; ipdb.set_trace()
         # low confidence or no objects
         # if len(boxes) == 0 or self.determine_to_ask_for_help(boxes, col_img):
-        if len(boxes) == 0:
-            self.helper.asked = True
-            self.helper.start_timer()
-            boxes, vectors = self.get_bboxes_from_web(path)
-            self.helper.stop_timer()
+        # if len(boxes) == 0:
+        #     self.helper.asked = True
+        #     self.helper.start_timer()
+        #     boxes, vectors = self.get_bboxes_from_web(path)
+        #     self.helper.stop_timer()
             # self.dl.save_stat("duration", self.helper.duration)
             # self.dl.save_stat("num_online", cfg.NUM_ROBOTS_ON_NETWORK)
 
@@ -218,65 +221,97 @@ class DeclutterDemo():
 
         # import ipdb; ipdb.set_trace()
 
-        while not (c_img is None or d_img is None):
-            path = 'debug_imgs/web.png'
-            cv2.imwrite(path, c_img)
-            time.sleep(2)  # make sure new image is written before being read
+        ask_for_help = False
+        failure_count = 0
 
-            main_mask = crop_img(c_img, simple=True)
+        with self.det.detection_graph.as_default():
+            with tensorflow.Session() as sess:
+                while not (c_img is None or d_img is None):
+                    path = 'debug_imgs/web.png'
+                    cv2.imwrite(path, c_img)
+                    time.sleep(2)  # make sure new image is written before being read
 
-            cv2.imwrite('debug_imgs/main_mask.png', main_mask.data)
-            col_img = ColorImage(c_img)
-            cv2.imwrite('debug_imgs/color_image.png', col_img.data)
-            workspace_img = col_img.mask_binary(main_mask)
-            cv2.imwrite('debug_imgs/workspace_img.png', workspace_img.data)
+                    main_mask = crop_img(c_img, simple=True)
 
-            bboxes, vectors, vis_util_image = self.get_bboxes(path, col_img)
+                    cv2.imwrite('debug_imgs/main_mask.png', main_mask.data)
+                    col_img = ColorImage(c_img)
+                    cv2.imwrite('debug_imgs/color_image.png', col_img.data)
+                    workspace_img = col_img.mask_binary(main_mask)
+                    cv2.imwrite('debug_imgs/workspace_img.png', workspace_img.data)
 
-            if len(bboxes) > 0:
-                box_viz = draw_boxes(bboxes, c_img)
-                cv2.imwrite("debug_imgs/box.png", box_viz)
-                single_objs = find_isolated_objects_by_overlap(bboxes)
-                grasp_success = 1.0
-                if len(single_objs) == 0:
-                    single_objs = find_isolated_objects_by_distance(bboxes, col_img)
+                    bboxes, vectors, vis_util_image = self.get_bboxes(path, col_img, sess=sess)
+                    get_human_feedback = False
 
-                if len(single_objs) > 0:
-                    to_grasp = select_first_obj(single_objs)
-                    singulation_time = 0.0
-                    self.run_grasp(to_grasp, c_img, col_img, workspace_img, d_img)
-                    # grasp_success = self.dl.record_success("grasp", other_data=[c_img, vis_util_image, d_img])
-                    # import ipdb; ipdb.set_trace()
-                else:
-                    # for accurate singulation should have bboxes for all
-                    groups = [box.to_group(c_img, col_img) for box in bboxes]
-                    groups = merge_groups(groups, cfg.DIST_TOL)
-                    singulator = Singulation(col_img, main_mask, [g.mask for g in groups])
-                    # import ipdb; ipdb.set_trace()
-                    self.run_singulate(singulator, d_img)
-                    sing_start = time.time()
-                    # singulation_success = self.dl.record_success("singulation", other_data=[c_img, vis_util_image, d_img])
-                    singulation_time = time.time() - sing_start
+                    if len(bboxes) == 0 or ask_for_help:
+                        self.helper.asked = True
+                        self.helper.start_timer()
+                        bboxes, vectors = self.get_bboxes_from_web(path)
+                        get_human_feedback = True
+                        # self.dl.save_stat("duration", self.helper.duration)
+                        self.helper.stop_timer()
 
-                if cfg.EVALUATE:
-                    reward = self.helper.get_reward(grasp_success, singulation_time)
-                    # self.dl.record_reward(reward)
-            elif len(vectors) > 0:
-                waypoints, class_labels = vectors[0]
-                rot = 0
-                singulator = Singulation(col_img, main_mask, [], goal_p=waypoints[-1], waypoints=waypoints,
-                                         gripper_angle=rot)
-                self.run_singulate(singulator, d_img)
+                    if len(bboxes) > 0:
+                        box_viz = draw_boxes(bboxes, c_img)
+                        cv2.imwrite("debug_imgs/box.png", box_viz)
+                        single_objs = find_isolated_objects_by_overlap(bboxes)
+                        grasp_success = True
+                        singulation_success = True
+                        if len(single_objs) == 0:
+                            single_objs = find_isolated_objects_by_distance(bboxes, col_img)
 
-            else:
-                print("Cleared the workspace")
-                print("Add more objects, then resume")
-                IPython.embed()
+                        if len(single_objs) > 0:
+                            to_grasp = select_first_obj(single_objs)
+                            singulation_time = 0.0
+                            self.run_grasp(to_grasp, c_img, col_img, workspace_img, d_img)
+                            # import ipdb;# ipdb.set_trace()
+                            recognition_success = self.dl.record_success("object_recognition", class_name=cfg.labels[to_grasp.label], other_data=[c_img, vis_util_image])
+                            grasp_success = self.dl.record_success("grasp", other_data=[c_img, vis_util_image])
 
-            self.ra.go_to_start_position()
+                        else:
+                            # import ipdb; ipdb.set_trace()
+                            # for accurate singulation should have bboxes for all
+                            groups = [box.to_group(c_img, col_img) for box in bboxes]
+                            groups = merge_groups(groups, cfg.DIST_TOL)
+                            singulator = Singulation(col_img, main_mask, [g.mask for g in groups])
+                            # import ipdb; ipdb.set_trace()
+                            self.run_singulate(singulator, d_img)
+                            sing_start = time.time()
+                            singulation_success = self.dl.record_success("singulation", other_data=[c_img, vis_util_image])
+                            singulation_time = time.time() - sing_start
 
-            self.ra.go_to_start_pose()
-            c_img, d_img = self.robot.get_img_data()
+                        if cfg.EVALUATE:
+                            reward = self.helper.get_reward(grasp_success, singulation_time)
+                            # self.dl.record_reward(reward)
+
+                        if get_human_feedback:
+                            self.dl.record_success("human_help", other_data=[c_img, vis_util_image])
+
+
+                        if grasp_success is False or singulation_success is False:
+                            failure_count += 1
+                            print('Failure Count is:' + str(failure_count))
+                            if failure_count >= 3:
+                                ask_for_help=True
+                        else:
+                            failure_count=0
+                            ask_for_help=False
+
+                    elif len(vectors) > 0:
+                        waypoints, class_labels = vectors[0]
+                        rot = 0
+                        singulator = Singulation(col_img, main_mask, [], goal_p=waypoints[-1], waypoints=waypoints,
+                                                 gripper_angle=rot)
+                        self.run_singulate(singulator, d_img)
+
+                    else:
+                        print("Cleared the workspace")
+                        print("Add more objects, then resume")
+                        IPython.embed()
+
+                    self.ra.go_to_start_position()
+
+                    self.ra.go_to_start_pose()
+                    c_img, d_img = self.robot.get_img_data()
 
     def lego_demo(self):
         """

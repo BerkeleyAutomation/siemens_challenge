@@ -1,6 +1,6 @@
 import sys
 
-sys.path.append('/Users/michaelluskey/Documents/RL/LFD/lapmaster1.1/')
+#sys.path.append('/Users/michaelluskey/Documents/RL/LFD/lapmaster1.1/')
 #sys.path.append('/home/laskeymd/RL')
 
 
@@ -14,7 +14,7 @@ import os
 from flask import Blueprint, render_template, request, jsonify, Response, abort, current_app,make_response
 from jinja2 import TemplateNotFound
 from flask import Flask
-from flask.ext.jsonpify import jsonify
+#from flask.ext.jsonpify import jsonify
 from functools import wraps,update_wrapper
 from sqlalchemy import or_
 
@@ -92,7 +92,7 @@ def gen_image():
     name = sharer.get_img()
 
     if (name == None):
-        name = "/home/hsr_web/data/images/frame_0.png"
+        name = "/home/ajaytanwani/PycharmProjects/siemens_challenge/web_default.png"
     print "IMAGE NAME ", name
     frame = open(name, "rb").read()
 
@@ -122,7 +122,8 @@ def image_get(id):
 #     return Response(gen_confidences(),mimetype='multipart/x-mixed-replace; boundary=frame')
 
 # labelclasses = ["Wrench", "Hammer", "Screwdriver", "Tape Measure", "Glue", "Tape"] #preserve js ordering
-labelclasses = ["Screwdriver", "Scrap", "Tube", "Tape"]
+#labelclasses = ["Screwdriver", "Scrap", "Tube", "Tape"]
+labelclasses = ["utility", "bottle", "cup", "fruit", "assemblyPart", "hammer", "scissors", "screwdriver", "tape", "toy", "tube", "wrench"]
 motions = ["Pickup", "Declutter"]
 
 @custom_code.route('/state_feed')

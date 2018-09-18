@@ -37,7 +37,8 @@ vector = false;
 curr_motion = 0
 
 // labels = ["Wrench", "Hammer", "Screwdriver", "Tape Measure", "Glue", "Tape"];
-labels = ["Screwdriver", "Scrap", "Tube", "Tape"];
+// labels = ["Screwdriver", "Scrap", "Tube", "Tape"];
+labels = ["utility", "bottle", "cup", "fruit", "assemblyPart", "hammer", "scissors", "screwdriver", "tape", "toy", "tube", "wrench"]
 
 var labelHTML = "";
 for (i = 0; i < labels.length; i += 1) {
