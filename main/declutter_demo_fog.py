@@ -67,8 +67,8 @@ class DeclutterDemo():
 
         # self.maskrcnn = maskrcnn
         if not self.maskrcnn:
-            model_path = 'main/model/real_on_real/output_inference_graph.pb'
-            label_map_path = 'main/model/real_on_real/object-detection.pbtxt'
+            model_path = 'main/model/sim_then_labeled_dann_on_real/output_inference_graph.pb'
+            label_map_path = 'main/model/sim_then_labeled_dann_on_real/object-detection.pbtxt'
             self.det = Detector(model_path, label_map_path)
 
         self.viz = viz
