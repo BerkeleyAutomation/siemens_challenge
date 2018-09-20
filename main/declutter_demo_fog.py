@@ -67,11 +67,13 @@ class DeclutterDemo():
 
         # self.maskrcnn = maskrcnn
         if not self.maskrcnn:
-            model_path = 'main/model/sim_then_labeled_dann_on_real/output_inference_graph.pb'
-            label_map_path = 'main/model/sim_then_labeled_dann_on_real/object-detection.pbtxt'
+            model_path = 'main/model/real_on_real/output_inference_graph.pb'
+            label_map_path = 'main/model/real_on_real/object-detection.pbtxt'
             self.det = Detector(model_path, label_map_path)
 
         self.viz = viz
+
+        self.log_performace = False
 
         # rospy.init_node('main_demo', anonymous=True)
         # self.subscriber = rospy.Subscriber("/ar_marker", Marker, self.ar_marker_callback, queue_size=1)
@@ -264,8 +266,9 @@ class DeclutterDemo():
                             singulation_time = 0.0
                             self.run_grasp(to_grasp, c_img, col_img, workspace_img, d_img)
                             # import ipdb;# ipdb.set_trace()
-                            recognition_success = self.dl.record_success("object_recognition", class_name=cfg.labels[to_grasp.label], other_data=[c_img, vis_util_image])
-                            grasp_success = self.dl.record_success("grasp", other_data=[c_img, vis_util_image])
+                            if self.log_performace:
+                                recognition_success = self.dl.record_success("object_recognition", class_name=cfg.labels[to_grasp.label], other_data=[c_img, vis_util_image])
+                                grasp_success = self.dl.record_success("grasp", other_data=[c_img, vis_util_image])
 
                         else:
                             # import ipdb; ipdb.set_trace()
@@ -276,14 +279,17 @@ class DeclutterDemo():
                             # import ipdb; ipdb.set_trace()
                             self.run_singulate(singulator, d_img)
                             sing_start = time.time()
-                            singulation_success = self.dl.record_success("singulation", other_data=[c_img, vis_util_image])
+
+                            if self.log_performace:
+                                singulation_success = self.dl.record_success("singulation", other_data=[c_img, vis_util_image])
+
                             singulation_time = time.time() - sing_start
 
                         if cfg.EVALUATE:
                             reward = self.helper.get_reward(grasp_success, singulation_time)
                             # self.dl.record_reward(reward)
 
-                        if get_human_feedback:
+                        if get_human_feedback and self.log_performace:
                             self.dl.record_success("human_help", other_data=[c_img, vis_util_image])
 
 
@@ -307,6 +313,8 @@ class DeclutterDemo():
                         print("Cleared the workspace")
                         print("Add more objects, then resume")
                         IPython.embed()
+
+                    # import ipdb; ipdb.set_trace()
 
                     self.ra.go_to_start_position()
 

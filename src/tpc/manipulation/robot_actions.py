@@ -71,6 +71,7 @@ class Robot_Actions():
 
     def grasp_at_pose(self, pose_name):
         self.robot.open_gripper()
+        # import ipdb;ipdb.set_trace()
         self.robot.move_to_pose(pose_name, 0.1)
         self.robot.move_to_pose(pose_name, 0.022)
         # self.robot.move_to_pose(pose_name, 0.019)
