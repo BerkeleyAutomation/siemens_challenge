@@ -1,16 +1,22 @@
-# Siemens Challenge
+# Fog Robotics Decluttering with the Toyota HSR
 
 ## Running the demo
 
-The current version of the demo resides in `main/declutter_demo.py`. The robot's initial position should be sideways so its head can turn left to face the objects. If the objects are simple (objects whose defining feature is color), set the variable "simple" to True and the demo will use a color-based segmentation. If the objects are complex (color is not the defining feature) then set the variable "simple" to False and the demo will use an object detection network. If the objects are not simple, before running this script follow the instructions to run the web labeler in the hsr_web folder to start a server and run psiturk. Once the loading icon appears, you are ready to run the demo script. (the web labeler does not need to be run if the objects are simple) To run the demo simply execute:
+The current version of the demo resides in `main/declutter_demo.py`. The robot's initial position should be facing the objects. If the objects are simple (objects whose defining feature is color), set the variable "simple" to True and the demo will use a color-based segmentation. If the objects are complex (color is not the defining feature) then set the variable "simple" to False and the demo will use an object detection network. If the objects are not simple, before running this script follow the instructions to run the web labeler in the hsr_web folder to start a server and run psiturk. Once the loading icon appears, you are ready to run the demo script. (the web labeler does not need to be run if the objects are simple) To run the demo simply execute:
 
 ```
 python main/declutter_demo.py
 ```
 
-At each iteration of the demo, the HSR will determine the level of clutter in the pile of objects and either compute a grasp point or execute a singulation. If a grasp is computed, the HSR will grasp the desired object, return to its start position to get a clear view of the AR markers on the bins, drop the object in the correct bin, then return to its start position to begin the loop again. If a singulation strategy is determined, the HSR will singulate the pile of objects and then return to its start position to begin the loop again. During the demo, the web labeler may ask for bounding box and class label for the next object if the demo is not confident enough about the objects.
+At each iteration of the demo, the HSR will determine the level of clutter in the pile of objects and either compute a grasp point or execute a singulation. If a grasp is computed, the HSR will grasp the desired object, return to its start position to get a clear view of the AR markers on the bins, drop the object in the correct bin, then return to its start position to begin the loop again. If a singulation strategy is determined, the HSR will singulate the pile of objects and then return to its start position to begin the loop again. During the demo, the web labeler may ask for a bounding box and class label for the next object if the demo is not confident enough about the objects.
 
 To restart the demo, run `endcomm.sh` to shut down all server code. Also reposition the robot correctly.
+
+For more details highlighting this project, along with videos demonstrating the task, see below:
+
+```
+https://sites.google.com/view/hsr-decluttering
+```
 
 ### Running in Simulation
 
