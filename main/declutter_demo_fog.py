@@ -130,7 +130,8 @@ class DeclutterDemo():
 
     def get_bboxes_from_net(self, path, sess=None):
         if not self.maskrcnn:
-            output_dict, vis_util_image = self.det.predict(path, sess)
+            # import ipdb; ipdb.set_trace()
+            output_dict, vis_util_image = self.det.predict(path, sess=sess)
             plt.savefig('debug_imgs/predictions.png')
             plt.close()
             plt.clf()
@@ -258,6 +259,7 @@ class DeclutterDemo():
                         single_objs = find_isolated_objects_by_overlap(bboxes)
                         grasp_success = True
                         singulation_success = True
+                        # import ipdb; ipdb.set_trace()
                         if len(single_objs) == 0:
                             single_objs = find_isolated_objects_by_distance(bboxes, col_img)
 

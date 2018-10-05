@@ -81,6 +81,14 @@ class Detector():
             output_dict = sess.run(tensor_dict,
                                    feed_dict={image_tensor: np.expand_dims(image, 0)})
 
+            output_dict['num_detections'] = int(output_dict['num_detections'][0])
+            output_dict['detection_classes'] = output_dict[
+                'detection_classes'][0].astype(np.uint8)
+            output_dict['detection_boxes'] = output_dict['detection_boxes'][0]
+            output_dict['detection_scores'] = output_dict['detection_scores'][0]
+            if 'detection_masks' in output_dict:
+                output_dict['detection_masks'] = output_dict['detection_masks'][0]
+
             return output_dict
 
         def run_inference_for_single_image(image, graph):
@@ -112,8 +120,7 @@ class Detector():
                                 detection_masks_reframed, 0)
                     image_tensor = tf.get_default_graph().get_tensor_by_name('image_tensor:0')
 
-                    output_dict = sess.run(tensor_dict,
-                                                                 feed_dict={image_tensor: np.expand_dims(image, 0)})
+                    output_dict = sess.run(tensor_dict, feed_dict={image_tensor: np.expand_dims(image, 0)})
 
                     output_dict['num_detections'] = int(output_dict['num_detections'][0])
                     output_dict['detection_classes'] = output_dict[
@@ -135,6 +142,9 @@ class Detector():
 
         image_np_expanded = np.expand_dims(image_np, axis=0)
         start_time = timer.time()
+
+        # import ipdb; ipdb.set_trace()
+
         if sess is None:
             output_dict = self.run_inference_for_single_image(image_np, self.detection_graph)
         else:
@@ -143,16 +153,26 @@ class Detector():
         print("final time: " + str(end_time - start_time))
         # Visualization of the results of a detection.
 
-        vis_util.visualize_boxes_and_labels_on_image_array(
-                image_np,
-                output_dict['detection_boxes'],
-                output_dict['detection_classes'],
-                output_dict['detection_scores'],
-                self.category_index,
-                instance_masks=output_dict.get('detection_masks'),
-                use_normalized_coordinates=True,
-                line_thickness=5,
-                min_score_thresh=thresh)
+        vis_util.visualize_boxes_and_labels_on_image_array(image_np,
+                                                           output_dict['detection_boxes'],
+                                                           output_dict['detection_classes'],
+                                                           output_dict['detection_scores'],
+                                                           self.category_index,
+                                                           instance_masks=output_dict.get('detection_masks'),
+                                                           use_normalized_coordinates=True,
+                                                           line_thickness=5,
+                                                           min_score_thresh=thresh)
+
+        # vis_util.visualize_boxes_and_labels_on_image_array(
+        #         image_np,
+        #         output_dict['detection_boxes'],
+        #         output_dict['detection_classes'],
+        #         output_dict['detection_scores'],
+        #         self.category_index,
+        #         instance_masks=output_dict.get('detection_masks'),
+        #         use_normalized_coordinates=True,
+        #         line_thickness=5,
+        #         min_score_thresh=thresh)
 
         plt.figure(figsize=IMAGE_SIZE)
         plt.imshow(image_np)
