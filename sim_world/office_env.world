@@ -2,21 +2,21 @@
   <world name='megaweb'>
     <physics name='default_physics' default='0' type='ode'>
       <max_step_size>0.001</max_step_size>
-      <real_time_factor>10</real_time_factor>
-      <real_time_update_rate>0</real_time_update_rate>
+      <real_time_factor>1</real_time_factor>
+      <real_time_update_rate>1000</real_time_update_rate>
     </physics>
     <scene>
       <ambient>1 1 1 1</ambient>
       <background>0.7 0.7 0.7 1</background>
       <shadows>0</shadows>
     </scene>
-<!--     <gui fullscreen='0'>
+    <gui fullscreen='0'>
       <camera name='camera_world'>
-        <pose frame=''>1.2947 0.711664 3.82012 0.000945 1.31495 -2.85208</pose>
+        <pose frame=''>0.823635 0.199216 3.15837 0 1.4578 -3.10808</pose>
         <view_controller>orbit</view_controller>
         <projection_type>perspective</projection_type>
       </camera>
-    </gui> -->
+    </gui>
     <model name='ground_plane'>
       <static>1</static>
       <link name='link'>
@@ -146,10 +146,10 @@
       <heading_deg>0</heading_deg>
     </spherical_coordinates>
     <state world_name='megaweb'>
-      <sim_time>1647 610000000</sim_time>
-      <real_time>112 676598157</real_time>
-      <wall_time>1527274873 373298045</wall_time>
-      <iterations>112174</iterations>
+      <sim_time>1768 312000000</sim_time>
+      <real_time>21 238834304</real_time>
+      <wall_time>1533612588 61591949</wall_time>
+      <iterations>21147</iterations>
       <model name='centralunit'>
         <pose frame=''>5.91376 8.34162 0 1.57 -0 0</pose>
         <scale>1 1 1</scale>
@@ -166,8 +166,8 @@
         <link name='body'>
           <pose frame=''>-0.824824 -2.74364 0 1.57079 -0 0</pose>
           <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 -0.993564 -1.98144 0 0</acceleration>
-          <wrench>0 0 -0.993564 0 -0 0</wrench>
+          <acceleration>0 -1e-06 0.990856 2.42795 -0 0</acceleration>
+          <wrench>0 -1e-06 0.990856 0 -0 0</wrench>
         </link>
       </model>
       <model name='chair_0'>
@@ -176,8 +176,8 @@
         <link name='body'>
           <pose frame=''>-0.340471 -2.83319 0 1.57079 0 -0.001577</pose>
           <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 -0.993564 -1.98144 0.003125 0</acceleration>
-          <wrench>0 0 -0.993564 0 -0 0</wrench>
+          <acceleration>0 -1e-06 0.990856 2.42795 -0.003829 0</acceleration>
+          <wrench>0 -1e-06 0.990856 0 -0 0</wrench>
         </link>
       </model>
       <model name='chair_1'>
@@ -186,8 +186,8 @@
         <link name='body'>
           <pose frame=''>-0.980067 -1.68388 0 1.57079 -0 3.14</pose>
           <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 -0.993564 1.98144 -0.003156 0</acceleration>
-          <wrench>0 0 -0.993564 0 -0 0</wrench>
+          <acceleration>0 1e-06 0.990856 -2.42795 0.003867 0</acceleration>
+          <wrench>0 1e-06 0.990856 0 -0 0</wrench>
         </link>
       </model>
       <model name='chair_2'>
@@ -196,8 +196,8 @@
         <link name='body'>
           <pose frame=''>-0.091506 -1.5999 0 1.57079 -0 3.14</pose>
           <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 -0.993564 1.98144 -0.003156 0</acceleration>
-          <wrench>0 0 -0.993564 0 -0 0</wrench>
+          <acceleration>0 1e-06 0.990856 -2.42795 0.003867 0</acceleration>
+          <wrench>0 1e-06 0.990856 0 -0 0</wrench>
         </link>
       </model>
       <model name='class0tag'>
@@ -235,6 +235,16 @@
         <scale>1 1 1</scale>
         <link name='link'>
           <pose frame=''>1 0.3 0 0 -0 0</pose>
+          <velocity>0 0 0 0 -0 0</velocity>
+          <acceleration>0 0 0 0 -0 0</acceleration>
+          <wrench>0 0 0 0 -0 0</wrench>
+        </link>
+      </model>
+      <model name='class3tag_clone'>
+        <pose frame=''>0.1 1 1e-06 0 -0 0</pose>
+        <scale>1 1 1</scale>
+        <link name='link'>
+          <pose frame=''>0.1 1 1e-06 0 -0 0</pose>
           <velocity>0 0 0 0 -0 0</velocity>
           <acceleration>0 0 0 0 -0 0</acceleration>
           <wrench>0 0 0 0 -0 0</wrench>
@@ -3712,6 +3722,53 @@
       <static>0</static>
       <allow_auto_disable>1</allow_auto_disable>
       <pose frame=''>1.00515 0.310061 0 0 -0 0</pose>
+    </model>
+    <model name='class3tag_clone'>
+      <link name='link'>
+        <pose frame=''>0 0 0 0 -0 0</pose>
+        <inertial>
+          <mass>1</mass>
+          <inertia>
+            <ixx>0.166667</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>0.166667</iyy>
+            <iyz>0</iyz>
+            <izz>0.166667</izz>
+          </inertia>
+          <pose frame=''>0 0 0 0 -0 0</pose>
+        </inertial>
+        <self_collide>0</self_collide>
+        <kinematic>0</kinematic>
+        <gravity>1</gravity>
+        <visual name='visual'>
+          <geometry>
+            <box>
+              <size>1.2 1.2 0.0001</size>
+            </box>
+          </geometry>
+          <material>
+            <script>
+              <name>Gazebo/Black</name>
+              <uri>file://media/materials/scripts/gazebo.material</uri>
+            </script>
+            <ambient>0.3 0.3 0.3 1</ambient>
+            <diffuse>0.7 0.7 0.7 1</diffuse>
+            <specular>0.01 0.01 0.01 1</specular>
+            <emissive>0 0 0 1</emissive>
+            <shader type='vertex'>
+              <normal_map>__default__</normal_map>
+            </shader>
+            <lighting>0</lighting>
+          </material>
+          <pose frame=''>0 0 0 0 -0 0</pose>
+          <transparency>0</transparency>
+          <cast_shadows>1</cast_shadows>
+        </visual>
+      </link>
+      <static>1</static>
+      <allow_auto_disable>1</allow_auto_disable>
+      <pose frame=''>-0.098909 0.932497 0 0 -0 0</pose>
     </model>
   </world>
 </sdf>

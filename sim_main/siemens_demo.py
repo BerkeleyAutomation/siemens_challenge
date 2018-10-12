@@ -21,6 +21,7 @@ import importlib
 import thread
 import tf
 import rospy
+import json
 
 if cfg.robot_name == "hsr":
     from core.hsr_robot_interface import Robot_Interface
@@ -89,6 +90,7 @@ class SiemensDemo():
         self.auto = auto
         if auto:
             self.dm, self.sm, self.om = setup_delete_spawn_service()
+            clean_floor(self.dm, self.om)
             spawn_from_uniform(6, self.sm)
 
         print "Finished init"
@@ -120,21 +122,21 @@ class SiemensDemo():
         boxes = format_net_bboxes(output_dict, img.shape)
         return boxes, vis_util_image
 
-    def get_bboxes_from_web(self, path):
-        labels = self.web.label_image(path)
+    # def get_bboxes_from_web(self, path):
+    #     labels = self.web.label_image(path)
 
-        objs = labels['objects']
-        bboxes = []
-        vectors = []
-        for obj in objs:
-            if obj['motion'] == 1:
-                coords = obj['coords']
-                p0 = [coords[1], coords[0]]
-                p1 = [coords[3], coords[2]]
-                vectors.append(([p0, p1], obj['class']))
-            else:
-                bboxes.append(Bbox(obj['coords'], obj['class']))
-        return bboxes, vectors
+    #     objs = labels['objects']
+    #     bboxes = []
+    #     vectors = []
+    #     for obj in objs:
+    #         if obj['motion'] == 1:
+    #             coords = obj['coords']
+    #             p0 = [coords[1], coords[0]]
+    #             p1 = [coords[3], coords[2]]
+    #             vectors.append(([p0, p1], obj['class']))
+    #         else:
+    #             bboxes.append(Bbox(obj['coords'], obj['class']))
+    #     return bboxes, vectors
 
     def determine_to_ask_for_help(self,bboxes,col_img):
         bboxes = deepcopy(bboxes)
@@ -153,11 +155,11 @@ class SiemensDemo():
         vectors = []
 
         #low confidence or no objects
-        if len(boxes) == 0 or self.determine_to_ask_for_help(boxes,col_img):
-            self.helper.asked = True
-            self.helper.start_timer()
-            boxes, vectors = self.get_bboxes_from_web(path)
-            self.helper.stop_timer()
+        # if len(boxes) == 0 or self.determine_to_ask_for_help(boxes,col_img):
+        #     self.helper.asked = True
+        #     self.helper.start_timer()
+        #     boxes, vectors = self.get_bboxes_from_web(path)
+        #     self.helper.stop_timer()
             # self.dl.save_stat("duration", self.helper.duration)
             # self.dl.save_stat("num_online", cfg.NUM_ROBOTS_ON_NETWORK)
 
@@ -166,8 +168,13 @@ class SiemensDemo():
     def siemens_demo(self):
         print("inside siemens demo!")
         loop_broadcast_classes()
+        
         self.ra.go_to_start_pose()
         c_img, d_img = self.robot.get_img_data()
+
+        summary = {}
+
+
 
         i = 0
         while not (c_img is None or d_img is None):
@@ -176,6 +183,10 @@ class SiemensDemo():
             # time.sleep(0.1) #make sure new image is written before being read
 
             # print "\n new iteration"
+            # start timing 
+            start = time.time()
+            print "start iter: " + str(i)
+
             main_mask = crop_img(c_img, simple=True)
             col_img = ColorImage(c_img)
             workspace_img = col_img.mask_binary(main_mask)
@@ -189,42 +200,57 @@ class SiemensDemo():
                 print("single_objs: {}".format(single_objs))
                 grasp_success = 1.0
                 if len(single_objs) == 0:
-                    single_objs = find_isolated_objects_by_distance(bboxes, col_img)
+                    clean_floor(self.dm, self.om)
+                    spawn_from_uniform(6, self.sm)
+                    print("Cleared the workspace")
+                    print("Add more objects, then resume")
 
                 if len(single_objs) > 0:
                     to_grasp = select_first_obj(single_objs)
                     singulation_time = 0.0
                     self.run_grasp(to_grasp, c_img, col_img, workspace_img, d_img)
-                    #IPython.embed()
+                    # grasp_time = time.time() - start
+                    # summary["time"].append(grasp_time)
+                    # IPython.embed()
                     # grasp_success = self.dl.record_success("grasp", other_data=[c_img, vis_util_image, d_img])
-                    i+=1
-                else:
-                    #for accurate singulation should have bboxes for all
-                    groups = [box.to_group(c_img, col_img) for box in bboxes]
-                    groups = merge_groups(groups, cfg.DIST_TOL)
-                    singulator = Singulation(col_img, main_mask, [g.mask for g in groups])
-                    self.run_singulate(singulator, d_img)
-                    sing_start = time.time()
-                    # singulation_success = self.dl.record_success("singulation", other_data=[c_img, vis_util_image, d_img])
-                    singulation_time = time.time()-sing_start
+                                
+                # else:
+                #     #for accurate singulation should have bboxes for all
+                #     groups = [box.to_group(c_img, col_img) for box in bboxes]
+                #     groups = merge_groups(groups, cfg.DIST_TOL)
+                #     singulator = Singulation(col_img, main_mask, [g.mask for g in groups])
+                #     self.run_singulate(singulator, d_img)
+                #     sing_start = time.time()
+                #     # singulation_success = self.dl.record_success("singulation", other_data=[c_img, vis_util_image, d_img])
+                #     singulation_time = time.time()-sing_start
 
-                if cfg.EVALUATE:
-                    reward = self.helper.get_reward(grasp_success,singulation_time)
+                # if cfg.EVALUATE:
+                #     reward = self.helper.get_reward(grasp_success,singulation_time)
                     # self.dl.record_reward(reward)
-            elif len(vectors) > 0:
-                waypoints, class_labels = vectors[0]
-                rot = 0
-                singulator = Singulation(col_img, main_mask, [], goal_p=waypoints[-1], waypoints=waypoints, gripper_angle=rot)
-                self.run_singulate(singulator, d_img)
+            # elif len(vectors) > 0:
+            #     waypoints, class_labels = vectors[0]
+            #     rot = 0
+            #     singulator = Singulation(col_img, main_mask, [], goal_p=waypoints[-1], waypoints=waypoints, gripper_angle=rot)
+            #     self.run_singulate(singulator, d_img)
 
-            if self.auto and i %3 == 0:
+            i+=1
+            if self.auto and i % 3 == 0:
                 clean_floor(self.dm, self.om)
                 spawn_from_uniform(6, self.sm)
-
-            else:
-                print("Cleared the workspace (i={})".format(i))
+                print("Cleared the workspace")
                 print("Add more objects, then resume")
+
+            # else:
+            #     print("Cleared the workspace")
+            #     print("Add more objects, then resume")
                 # IPython.embed()
+            print(summary)
+            with open('summary.json', 'w') as outfile:
+                json.dump(summary, outfile)
+
+            if i >= 30:
+                with open('summary.json', 'w') as outfile:
+                    json.dump(summary, outfile)
 
             self.ra.go_to_start_position()
             

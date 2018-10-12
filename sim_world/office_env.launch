@@ -2,9 +2,18 @@
 <launch>
   <include file="$(find hsrb_gazebo_launch)/launch/include/hsrb_gazebo_common.xml" >
     <arg name="map" value="$(find tmc_potential_maps)/maps/white_space/map.yaml" />
-    <arg name="world_name" value="/home/zisu/simulator/siemens_challenge/sim_world/office_env.world" />
+    <arg name="world_name" value="$(env SIMULATOR_REPOSITORY_PATH)/siemens_challenge/sim_world/office_env_test.world" />
     <arg name="robot_pos" value="-x 0 -y 0 -z 0 -Y 0" />
+
     <arg name="use_laser_odom" value="true" />
+    <!-- <arg name="use_navigation" default="false" /> -->
+    <arg name="use_task" default="false" />
+    <arg name="use_teleop" default="false" />
+    <arg name="use_web" default="false" />
+    <arg name="gazebo_visualization" default="false" />
+    <arg name="gui" default="true" />
+    <arg name="rviz" default="false" />
   </include>
   <param name="use_sim_time" value="true" />
+  <param name="recording" value="false"/>
 </launch>

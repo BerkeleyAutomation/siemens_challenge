@@ -6,13 +6,11 @@ import random
 import numpy as np
 import re
 
-LIMIT = {'x':(-0.3, 0.5), 'y':(0.6, 1.4), 'rad':(0, 3.14)}
-# QUATER = tf.transformations.quaternion_from_euler(0,0,0)
-# ORIENT = Quaternion(QUATER[0], QUATER[1], QUATER[2], QUATER[3])
+LIMIT = {'x':(-0.2, 0.2), 'y':(0.8, 1.2), 'rad':(0, 2*3.14)}
 
 MODEL_PATH = "/home/zisu/simulator/siemens_challenge/sim_world/toolbox/"
-MODEL_LIST = ["screwdriver1", "screwdriver2", "screwdriver3", "tape2", "tape3", "tube1", "scrap1"]
-MODEL_TYPE = ["screwdriver", "tape", "tube", "scrap"]
+
+MODEL_TYPE = {"lightbulb": 1, "gear": 2, "nozzle": 1, "screwdriver": 9, "tape": 2, "barClamp": 1, "combinationWrench": 15, "hammer": 1, "openEndWrench": 3, "socketWrench": 3, "adjustableWrench": 4, "tube": 1, "bottle": 9, "cup": 1, "mug": 3}
 
 
 def setup_delete_spawn_service():
@@ -21,7 +19,6 @@ def setup_delete_spawn_service():
     # rospy.init_node("spawn_products_in_bins")
     rospy.wait_for_service("gazebo/delete_model")
     rospy.wait_for_service("gazebo/spawn_sdf_model")
-
     rospy.wait_for_service("gazebo/get_world_properties")
     print("Got it.")
     delete_model = rospy.ServiceProxy("gazebo/delete_model", DeleteModel)
@@ -33,6 +30,7 @@ def setup_delete_spawn_service():
 
 def get_object_list(object_monitor):
     lst = []
+    rospy.wait_for_service("gazebo/get_world_properties")
     for name in object_monitor().model_names:
         ind = re.search("\d", name)
         if ind == None:
@@ -46,7 +44,10 @@ def get_object_list(object_monitor):
     return lst
 
 def delete_object(name, delete_model):
+    rospy.wait_for_service("gazebo/delete_model")
+    print("Deleting Object.")
     delete_model(name)
+    return name
 
 def clean_floor(delete_model, object_monitor):
     object_lst = get_object_list(object_monitor)
@@ -55,11 +56,14 @@ def clean_floor(delete_model, object_monitor):
         rospy.sleep(0.5)
 
 def spawn_from_uniform(n, spawn_model):
+    tags = []
     for i in range(n):
         # item
-        model_tag = random.choice(MODEL_LIST)
+        model_tag = random.choice(MODEL_TYPE.keys())
+        model_index = random.choice(range(1, MODEL_TYPE[model_tag]+1))
+        model_paint = random.choice(range(5))
 
-        with open(MODEL_PATH+model_tag+"/model.sdf", "r") as f:
+        with open(MODEL_PATH+model_tag+str(model_index)+"_"+str(model_paint)+"/model.sdf", "r") as f:
             object_xml = f.read()
 
         # pose
@@ -74,9 +78,12 @@ def spawn_from_uniform(n, spawn_model):
         object_pose = Pose(Point(x=pt_x, y=pt_y, z=0.5), orient)
 
         # spawn
-        object_name = model_tag+"_"+str(i)
+        object_name = model_tag+str(model_index)+"_"+str(model_paint) +"_" +str(i)
+        rospy.wait_for_service("gazebo/spawn_sdf_model")
         spawn_model(object_name, object_xml, "", object_pose, "world")
         rospy.sleep(0.5)
+        tags.append(model_tag+str(model_index)+"_"+str(model_paint))
+    return tags
 
 def spawn_from_gaussian(n, spawn_model):
     for i in range(n):
@@ -99,6 +106,7 @@ def spawn_from_gaussian(n, spawn_model):
 
         # spawn
         object_name = model_tag+"_"+str(i)
+        rospy.wait_for_service("gazebo/spawn_sdf_model")
         spawn_model(object_name, object_xml, "", object_pose, "world")
         rospy.sleep(0.5)
 
