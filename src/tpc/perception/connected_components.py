@@ -101,7 +101,7 @@ def merge_groups(groups, dist_tol):
 
         groups = unmerged_groups
         unmerged_groups = []
-
+        
     for g in merged_groups:
         g.compute_info()
 

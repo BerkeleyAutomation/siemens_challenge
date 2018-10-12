@@ -25,7 +25,7 @@ import rospy
 if cfg.robot_name == "hsr":
     from core.hsr_robot_interface import Robot_Interface
 elif cfg.robot_name == "fetch":
-    from core.fetch_robot_interface import Robot_Interface 
+    from fetch_core.robot_interface import Robot_Interface
 elif cfg.robot_name is None:
     from tpc.offline.robot_interface import Robot_Interface
 
@@ -164,6 +164,7 @@ class SiemensDemo():
         return boxes, vectors, vis_util_image
 
     def siemens_demo(self):
+        print("inside siemens demo!")
         loop_broadcast_classes()
         self.ra.go_to_start_pose()
         c_img, d_img = self.robot.get_img_data()
@@ -185,6 +186,7 @@ class SiemensDemo():
                 box_viz = draw_boxes(bboxes, c_img)
                 cv2.imwrite("debug_imgs/box.png", box_viz)
                 single_objs = find_isolated_objects_by_overlap(bboxes)
+                print("single_objs: {}".format(single_objs))
                 grasp_success = 1.0
                 if len(single_objs) == 0:
                     single_objs = find_isolated_objects_by_distance(bboxes, col_img)
@@ -193,7 +195,7 @@ class SiemensDemo():
                     to_grasp = select_first_obj(single_objs)
                     singulation_time = 0.0
                     self.run_grasp(to_grasp, c_img, col_img, workspace_img, d_img)
-                    IPython.embed()
+                    #IPython.embed()
                     # grasp_success = self.dl.record_success("grasp", other_data=[c_img, vis_util_image, d_img])
                     i+=1
                 else:
@@ -220,7 +222,7 @@ class SiemensDemo():
                 spawn_from_uniform(6, self.sm)
 
             else:
-                print("Cleared the workspace")
+                print("Cleared the workspace (i={})".format(i))
                 print("Add more objects, then resume")
                 # IPython.embed()
 

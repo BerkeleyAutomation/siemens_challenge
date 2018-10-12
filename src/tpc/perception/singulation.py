@@ -157,6 +157,8 @@ class Singulation():
             1x2 vector pointing in the direction in which the
             robot should singulate
         """
+        #start_p = self.obj_mask.closest_zero_pixel(mean, -1*direction)
+        #end_p = self.obj_mask.closest_zero_pixel(mean, direction)
         start_p = self.obj_mask.closest_nonzero_pixel(mean, -1*direction)
         end_p = self.obj_mask.closest_nonzero_pixel(mean, direction)
 

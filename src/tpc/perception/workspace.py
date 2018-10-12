@@ -172,8 +172,10 @@ if __name__ == "__main__":
 	tt.register(robot)
 
 
-
+	
 	IPython.embed()
 	tt.move_to_pose(omni_base,'lower_mid')
 	# tt.move_to_pose(omni_base,'right_corner')
 	# tt.move_to_pose(omni_base,'right_mid')
+	
+

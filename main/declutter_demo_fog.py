@@ -8,6 +8,12 @@ from copy import deepcopy
 import sys
 import thread
 import tf
+
+import importlib
+img = importlib.import_module(cfg.IMG_MODULE)
+ColorImage = getattr(img, 'ColorImage')
+BinaryImage = getattr(img, 'BinaryImage')
+
 from hsrb_interface import geometry
 from tpc.perception.cluster_registration import run_connected_components, display_grasps, class_num_to_name, \
     grasps_within_pile, hsv_classify
@@ -34,24 +40,32 @@ elif cfg.robot_name == "fetch":
 elif cfg.robot_name is None:
     from tpc.offline.robot_interface import Robot_Interface
 
+# import web labeler
 sys.path.append("hsr_web/")
 from web_labeler import Web_Labeler
 
-import importlib
-
-img = importlib.import_module(cfg.IMG_MODULE)
-ColorImage = getattr(img, 'ColorImage')
-BinaryImage = getattr(img, 'BinaryImage')
-
-"""
-This class is for use with the robot
-Pipeline it tests is labeling all objects in an image using web interface,
-then choosing between and predicting a singulation or a grasp,
-then the robot executing the predicted motion
-"""
-
 
 class DeclutterDemo():
+    """
+    This class is for use with the robot
+    Pipeline it tests is labeling all objects in an image using web interface,
+    then choosing between and predicting a singulation or a grasp,
+    then the robot executing the predicted motion
+    ...
+
+    Attributes
+    ----------
+    robot : Robot_Interface
+        low level interface that interacts with primitive HSR kinematics:
+        http://hsr.io/
+    ra : Robot_actions
+        high level declutering task-specific interface that interacts 
+        with the HSR_CORE Robot_Interface:
+        https://github.com/BerkeleyAutomation/HSR_CORE
+    viz : boolean
+        save images from perception pipeline
+
+    """
 
     def __init__(self, viz=False, maskrcnn=False):
         """
@@ -112,6 +126,22 @@ class DeclutterDemo():
 
 
     def run_grasp(self, bbox, c_img, col_img, workspace_img, d_img):
+        '''
+        Parameters
+        ----------
+        bbox : Bbox
+            bounding box of object to
+            be grasped
+        c_img : cv2.img
+            rgb image from robot
+        col_img : ColorImage
+            c_img wrapped in ColorImage
+        workspace_img : BinaryImage
+            c_img cropped to workspace
+        d_img : cv2.img
+            depth image from robot
+
+        """
         print("Grasping a " + cfg.labels[bbox.label])
         try:
             group = bbox.to_group(c_img, col_img)
@@ -123,14 +153,46 @@ class DeclutterDemo():
         self.ra.execute_grasp(group.cm, group.dir, d_img, class_num=bbox.label)
 
     def run_singulate(self, singulator, d_img):
+        """
+        execute the singulation strategy
+        
+        '''
+        Parameters
+        ----------
+        singulator : Singulation
+            class for handling singulation
+            strategy
+        d_img : cv2.img
+            depth image from robot
+
+        """
         print("Singulating")
         waypoints, rot, free_pix = singulator.get_singulation()
         singulator.display_singulation()
         self.ra.execute_singulate(waypoints, rot, d_img)
 
     def get_bboxes_from_net(self, path, sess=None):
+        """
+        fetch bounding boxes from the object 
+        detection network
+
+        '''
+        Parameters
+        ----------
+        path : String
+            the filepath of the image from the robot
+            to run through the network
+        sess : tensorflow session for object recognition
+
+        Returns
+        -------
+        bboxes : []
+            list of Bbox objects labeled by hand
+        vis_util_image : np.array()
+            numpy array format of image
+
+        """
         if not self.maskrcnn:
-            # import ipdb; ipdb.set_trace()
             output_dict, vis_util_image = self.det.predict(path, sess=sess)
             plt.savefig('debug_imgs/predictions.png')
             plt.close()
@@ -144,6 +206,24 @@ class DeclutterDemo():
         return boxes, vis_util_image
 
     def get_bboxes_from_web(self, path):
+        """
+        fetch bounding boxes from the web labeler
+        
+        '''
+        Parameters
+        ----------
+        path : String
+            the filepath of the image from the robot
+            to label
+
+        Returns
+        -------
+        bboxes : []
+            list of Bbox objects labeled by hand
+        vectors : []
+            list of vectors to use for singulation
+        
+        """
         labels = self.web.label_image(path)
 
         objs = labels['objects']
@@ -160,6 +240,25 @@ class DeclutterDemo():
         return bboxes, vectors
 
     def determine_to_ask_for_help(self, bboxes, col_img):
+        """
+        Determine whether to ask for help from the
+        web labeler by looking at the overlap and
+        separation between objects
+        
+        '''
+        Parameters
+        ----------
+        bboxes : []
+            list of Bbox objects
+        col_img : ColorImage
+            rgb image wrapped in ColorImage class
+
+        Returns
+        -------
+        boolean
+            True if ask for help, false otherwise
+
+        """
         bboxes = deepcopy(bboxes)
         col_img = deepcopy(col_img)
 
@@ -172,6 +271,28 @@ class DeclutterDemo():
             return len(single_objs) == 0
 
     def get_bboxes(self, path, col_img, sess=None):
+        """
+        get all the bounding boxes around objects
+        in the image, also finds push strategies
+
+        '''
+        Parameters
+        ----------
+        path : String
+            file path to save debug image
+        col_img : ColorImage
+            rgb image wrapped in ColorImage class
+        sess: tensorflow session for object recognition
+
+        Returns
+        -------
+        boxes : []
+            a list of Bbox objects
+        vectors : []
+            a list of vectors to use for
+            singulation
+
+        """
         boxes, vis_util_image = self.get_bboxes_from_net(path,sess)
         vectors = []
 
@@ -189,6 +310,27 @@ class DeclutterDemo():
         return boxes, vectors, vis_util_image
 
     def find_grasps(self, groups, col_img):
+        """
+        find all lego blocks to grasp and singulate
+        in groups
+
+        '''
+        Parameters
+        ----------
+        groups : []
+            list of groups of clutter
+        col_img : ColorImage
+            rgb image wrapped in ColorImage class
+
+        Returns
+        -------
+        to_grasp : []
+            a list of groups of objects to grasp
+        to_singulate : []
+            list of groups of objects to
+            singulate
+
+        """
         to_grasp = []
         to_singulate = []
         for group in groups:
@@ -207,7 +349,9 @@ class DeclutterDemo():
 
     def tools_demo(self):
         """
-        demo that runs objects detection and declutters tools
+        demo that runs objects detection and declutters tools,
+        runs until workspace is clear
+
         """
         # import ipdb;ipdb.set_trace()
         self.ra.go_to_start_pose()
@@ -327,8 +471,11 @@ class DeclutterDemo():
         """
         demo that runs color based segmentation and declutters legos
         """
+
+        # if true, use hard-coded deposit without AR markers
         hard_code = True
 
+        # setup robot in front-facing start pose to take image of legos
         self.ra.go_to_start_pose()
         self.ra.set_start_position()
         self.ra.head_start_pose()
@@ -340,33 +487,45 @@ class DeclutterDemo():
                 cv2.imwrite(path, c_img)
                 time.sleep(2)
 
+            # crop image and generate binary mask
             main_mask = crop_img(c_img, simple=True, arc=False, viz=self.viz)
             col_img = ColorImage(c_img)
             workspace_img = col_img.mask_binary(main_mask)
 
+            # find groups of legos as individual seg masks
             groups = run_connected_components(workspace_img, viz=self.viz)
             valid_groups = []
+
+            # extract only legos in valid color set
             for group in groups:
                 class_num = hsv_classify(col_img.mask_binary(group.mask))
                 color_name = class_num_to_name(class_num)
                 if color_name in cfg.HUES_TO_BINS:
                     valid_groups.append(group)
 
+            # workspace has legos
             if len(valid_groups) > 0:
 
+                # find legos to be grasped and singulated within cluterred groups
                 to_grasp, to_singulate = self.find_grasps(valid_groups, col_img)
 
+                # choose grasping strategy
                 if len(to_grasp) > 0:
-                    to_grasp.sort(key=lambda g: -1 * g[0].cm[0])
+
+                    # find closest lego to grasp
+                    to_grasp.sort(key=lambda g:-1 * g[0].cm[0])
                     if not cfg.CHAIN_GRASPS:
                         to_grasp = to_grasp[0:1]
                     if self.viz:
                         display_grasps(workspace_img, [g[0] for g in to_grasp], name="debug_imgs/grasp")
 
+                    # save the color and label of lego for depositing later
                     group = to_grasp[0][0]
                     label = to_grasp[0][1]
                     color = to_grasp[0][2]
                     print("Grasping a " + color + " lego", label)
+
+                    # attempt to execute grasp of lego
                     try:
                         self.ra.execute_grasp(group.cm, group.dir, d_img, class_num=label)
                     except Exception as ex:
@@ -375,7 +534,7 @@ class DeclutterDemo():
                         self.ra.head_start_pose()
                         c_img, d_img = self.robot.get_img_data()
                         continue
-
+                        
                     print(self.ra.get_start_position(), self.ra.get_position())
                     while True:
                         try:
@@ -383,8 +542,12 @@ class DeclutterDemo():
                             break
                         except Exception as ex:
                             print(ex)
+
+                    # return to the position it was in before grasping
                     # self.ra.go_to_start_pose()
                     self.ra.move_to_start()
+
+                    # deposit lego in it's corresponding colored bin
                     if hard_code:
                         if label == 2:
                             self.ra.move_base(z=-2.3)
@@ -414,6 +577,8 @@ class DeclutterDemo():
                             self.ra.deposit_obj(label)
                         except Exception as ex:
                             print(ex)
+
+                # choose singulation strategy
                 else:
                     # singulator = Singulation(col_img, main_mask, [g.mask for g in to_singulate])
                     # self.run_singulate(singulator, d_img)
@@ -422,15 +587,18 @@ class DeclutterDemo():
                     group = valid_groups[0]
                     try:
                         self.ra.spread_singulate(group.cm, group.dir, d_img)
+                        # self.ra.l_singulate(group.cm, group.dir, d_img)
                     except Exception as ex:
                         print(ex)
                     self.ra.go_to_start_pose()
 
+            # workspace is clear
             else:
                 print("Cleared the workspace")
                 print("Add more objects, then resume")
                 IPython.embed()
 
+            # return to starting position and begin new iteration
             self.ra.move_to_start()
             # self.ra.go_to_start_pose()
             self.ra.head_start_pose()
@@ -451,6 +619,7 @@ if __name__ == "__main__":
         DEBUG = True
     else:
         DEBUG = False
+
     task = DeclutterDemo(viz=True)
     # rospy.spin()
     simple = False
