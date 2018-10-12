@@ -141,7 +141,7 @@ class DeclutterDemo():
         d_img : cv2.img
             depth image from robot
 
-        """
+        '''
         print("Grasping a " + cfg.labels[bbox.label])
         try:
             group = bbox.to_group(c_img, col_img)
@@ -155,8 +155,7 @@ class DeclutterDemo():
     def run_singulate(self, singulator, d_img):
         """
         execute the singulation strategy
-        
-        '''
+
         Parameters
         ----------
         singulator : Singulation
