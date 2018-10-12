@@ -1,4 +1,4 @@
-# Fog Robotics Decluttering with the Toyota HSR
+# Surface Decluttering with Mobile Robots
 
 ## Running the demo
 
