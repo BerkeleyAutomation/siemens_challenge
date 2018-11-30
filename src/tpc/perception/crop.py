@@ -56,7 +56,7 @@ def set_crop(img_path="debug/imgs/new_setup_crop/crop_sample.png"):
     root.mainloop()
     pickle.dump(points, open("src/tpc/config.crop.p", "wb"))
 
-def crop_img(img, use_preset=False, arc=True, viz=False, simple=False, bycoords=None):
+def crop_img(img, use_preset=False, arc=True, viz=False, simple=False, bycoords=None, task=None):
     """ Crops image polygonally
     to white working area (WA)
     Parameters
@@ -76,8 +76,10 @@ def crop_img(img, use_preset=False, arc=True, viz=False, simple=False, bycoords=
 
     if simple:
         scale_factors = [10, 10]
-        # to_chop = [mask_shape[0]/10, mask_shape[0]/5, mask_shape[1]/10, mask_shape[1]/5]
-        to_chop = [105, 1, 1, 1]
+        if task == 'lego_demo':
+            to_chop = [mask_shape[0]/10, mask_shape[0]/5, mask_shape[1]/10, mask_shape[1]/5]
+        else:
+            to_chop = [105, 1, 1, 1]
         # to_chop = [mask_shape[0] / 20, mask_shape[0], mask_shape[1] / 20, mask_shape[1] / 5]
         #create mask
         focus_mask = np.zeros(mask_shape, dtype=np.uint8)

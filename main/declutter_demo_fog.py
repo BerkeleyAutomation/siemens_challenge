@@ -10,9 +10,9 @@ import thread
 import tf
 
 import importlib
-img = importlib.import_module(cfg.IMG_MODULE)
-ColorImage = getattr(img, 'ColorImage')
-BinaryImage = getattr(img, 'BinaryImage')
+# import web labeler
+sys.path.append("hsr_web/")
+from web_labeler import Web_Labeler
 
 from hsrb_interface import geometry
 from tpc.perception.cluster_registration import run_connected_components, display_grasps, class_num_to_name, \
@@ -40,9 +40,11 @@ elif cfg.robot_name == "fetch":
 elif cfg.robot_name is None:
     from tpc.offline.robot_interface import Robot_Interface
 
-# import web labeler
-sys.path.append("hsr_web/")
-from web_labeler import Web_Labeler
+
+img = importlib.import_module(cfg.IMG_MODULE)
+ColorImage = getattr(img, 'ColorImage')
+BinaryImage = getattr(img, 'BinaryImage')
+
 
 
 class DeclutterDemo():
@@ -466,6 +468,7 @@ class DeclutterDemo():
                     self.ra.go_to_start_pose()
                     c_img, d_img = self.robot.get_img_data()
 
+
     def lego_demo(self):
         """
         demo that runs color based segmentation and declutters legos
@@ -480,129 +483,135 @@ class DeclutterDemo():
         self.ra.head_start_pose()
         c_img, d_img = self.robot.get_img_data()
 
-        while not (c_img is None or d_img is None):
-            if self.viz:
-                path = 'debug_imgs/web.png'
-                cv2.imwrite(path, c_img)
-                time.sleep(2)
-
-            # crop image and generate binary mask
-            main_mask = crop_img(c_img, simple=True, arc=False, viz=self.viz)
-            col_img = ColorImage(c_img)
-            workspace_img = col_img.mask_binary(main_mask)
-
-            # find groups of legos as individual seg masks
-            groups = run_connected_components(workspace_img, viz=self.viz)
-            valid_groups = []
-
-            # extract only legos in valid color set
-            for group in groups:
-                class_num = hsv_classify(col_img.mask_binary(group.mask))
-                color_name = class_num_to_name(class_num)
-                if color_name in cfg.HUES_TO_BINS:
-                    valid_groups.append(group)
-
-            # workspace has legos
-            if len(valid_groups) > 0:
-
-                # find legos to be grasped and singulated within cluterred groups
-                to_grasp, to_singulate = self.find_grasps(valid_groups, col_img)
-
-                # choose grasping strategy
-                if len(to_grasp) > 0:
-
-                    # find closest lego to grasp
-                    to_grasp.sort(key=lambda g:-1 * g[0].cm[0])
-                    if not cfg.CHAIN_GRASPS:
-                        to_grasp = to_grasp[0:1]
+        with self.det.detection_graph.as_default():
+            with tensorflow.Session() as sess:
+                while not (c_img is None or d_img is None):
                     if self.viz:
-                        display_grasps(workspace_img, [g[0] for g in to_grasp], name="debug_imgs/grasp")
+                        path = 'debug_imgs/web.png'
+                        cv2.imwrite(path, c_img)
+                        time.sleep(2)
 
-                    # save the color and label of lego for depositing later
-                    group = to_grasp[0][0]
-                    label = to_grasp[0][1]
-                    color = to_grasp[0][2]
-                    print("Grasping a " + color + " lego", label)
+                    # crop image and generate binary mask
+                    main_mask = crop_img(c_img, simple=True, arc=False, viz=self.viz)
+                    col_img = ColorImage(c_img)
+                    workspace_img = col_img.mask_binary(main_mask)
 
-                    # attempt to execute grasp of lego
-                    try:
-                        self.ra.execute_grasp(group.cm, group.dir, d_img, class_num=label)
-                    except Exception as ex:
-                        print(ex)
-                        self.ra.move_to_start()
-                        self.ra.head_start_pose()
-                        c_img, d_img = self.robot.get_img_data()
-                        continue
-                        
-                    print(self.ra.get_start_position(), self.ra.get_position())
-                    while True:
-                        try:
-                            self.robot.body_neutral_pose()
-                            break
-                        except Exception as ex:
-                            print(ex)
+                    # find groups of legos as individual seg masks
+                    groups = run_connected_components(workspace_img, viz=self.viz)
+                    valid_groups = []
 
-                    # return to the position it was in before grasping
-                    # self.ra.go_to_start_pose()
-                    self.ra.move_to_start()
+                    # extract only legos in valid color set
+                    for group in groups:
+                        class_num = hsv_classify(col_img.mask_binary(group.mask))
+                        color_name = class_num_to_name(class_num)
+                        if color_name in cfg.HUES_TO_BINS:
+                            valid_groups.append(group)
 
-                    # deposit lego in it's corresponding colored bin
-                    if hard_code:
-                        if label == 2:
-                            self.ra.move_base(z=-2.3)
-                            # self.ra.move_base(x=-0.4)
-                            # self.ra.move_base(z=-1.6)
-                        if label == 1:
-                            self.ra.move_base(z=-1.7)
-                        if label == 0:
-                            self.ra.move_base(z=-1.1)
-                        # self.ra.move_base(z=-1.6)
-                        # self.robot.body_neutral_pose()
-                        self.robot.body_neutral_pose()
-                        self.ra.deposit_in_cubby()
-                        # self.ra.move_base(z=1.6)
-                        if label == 2:
-                            # self.ra.move_base(x=0.6)
-                            # self.ra.move_base(z=1.6)
-                            # self.ra.move_base(x=0.4)
-                            self.ra.move_base(z=2.3)
-                        if label == 1:
-                            # self.ra.move_base(x=0.3)
-                            self.ra.move_base(z=1.7)
-                        if label == 0:
-                            self.ra.move_base(z=1.1)
+                    bboxes, vectors, vis_util_image = self.get_bboxes(path, col_img, sess=sess)
+
+                    import ipdb; ipdb.set_trace()
+                    # workspace has legos
+                    if len(valid_groups) > 0:
+
+                        # find legos to be grasped and singulated within cluterred groups
+                        to_grasp, to_singulate = self.find_grasps(valid_groups, col_img)
+
+                        # choose grasping strategy
+                        if len(to_grasp) > 0:
+
+                            # find closest lego to grasp
+                            to_grasp.sort(key=lambda g:-1 * g[0].cm[0])
+                            if not cfg.CHAIN_GRASPS:
+                                to_grasp = to_grasp[0:1]
+                            if self.viz:
+                                display_grasps(workspace_img, [g[0] for g in to_grasp], name="debug_imgs/grasp")
+
+                            # save the color and label of lego for depositing later
+                            group = to_grasp[0][0]
+                            label = to_grasp[0][1]
+                            color = to_grasp[0][2]
+                            print("Grasping a " + color + " lego", label)
+
+                            # attempt to execute grasp of lego
+                            # import ipdb; ipdb.set_trace()
+                            try:
+                                self.ra.execute_grasp(group.cm, group.dir, d_img, class_num=label)
+                            except Exception as ex:
+                                print(ex)
+                                self.ra.move_to_start()
+                                self.ra.head_start_pose()
+                                c_img, d_img = self.robot.get_img_data()
+                                continue
+
+                            print(self.ra.get_start_position(), self.ra.get_position())
+                            while True:
+                                try:
+                                    self.robot.body_neutral_pose()
+                                    break
+                                except Exception as ex:
+                                    print(ex)
+
+                            # return to the position it was in before grasping
+                            # self.ra.go_to_start_pose()
+                            self.ra.move_to_start()
+
+                            # deposit lego in it's corresponding colored bin
+                            if hard_code:
+                                if label == 2:
+                                    self.ra.move_base(z=-2.3)
+                                    # self.ra.move_base(x=-0.4)
+                                    # self.ra.move_base(z=-1.6)
+                                if label == 1:
+                                    self.ra.move_base(z=-1.7)
+                                if label == 0:
+                                    self.ra.move_base(z=-1.1)
+                                # self.ra.move_base(z=-1.6)
+                                # self.robot.body_neutral_pose()
+                                self.robot.body_neutral_pose()
+                                self.ra.deposit_in_cubby()
+                                # self.ra.move_base(z=1.6)
+                                if label == 2:
+                                    # self.ra.move_base(x=0.6)
+                                    # self.ra.move_base(z=1.6)
+                                    # self.ra.move_base(x=0.4)
+                                    self.ra.move_base(z=2.3)
+                                if label == 1:
+                                    # self.ra.move_base(x=0.3)
+                                    self.ra.move_base(z=1.7)
+                                if label == 0:
+                                    self.ra.move_base(z=1.1)
+                            else:
+                                try:
+                                    self.ra.deposit_obj(label)
+                                except Exception as ex:
+                                    print(ex)
+
+                        # choose singulation strategy
+                        else:
+                            # singulator = Singulation(col_img, main_mask, [g.mask for g in to_singulate])
+                            # self.run_singulate(singulator, d_img)
+                            # self.ra.go_to_start_pose()
+                            print('Singulating')
+                            group = valid_groups[0]
+                            try:
+                                self.ra.spread_singulate(group.cm, group.dir, d_img)
+                                # self.ra.l_singulate(group.cm, group.dir, d_img)
+                            except Exception as ex:
+                                print(ex)
+                            self.ra.go_to_start_pose()
+
+                    # workspace is clear
                     else:
-                        try:
-                            self.ra.deposit_obj(label)
-                        except Exception as ex:
-                            print(ex)
+                        print("Cleared the workspace")
+                        print("Add more objects, then resume")
+                        IPython.embed()
 
-                # choose singulation strategy
-                else:
-                    # singulator = Singulation(col_img, main_mask, [g.mask for g in to_singulate])
-                    # self.run_singulate(singulator, d_img)
+                    # return to starting position and begin new iteration
+                    self.ra.move_to_start()
                     # self.ra.go_to_start_pose()
-                    print('Singulating')
-                    group = valid_groups[0]
-                    try:
-                        self.ra.spread_singulate(group.cm, group.dir, d_img)
-                        # self.ra.l_singulate(group.cm, group.dir, d_img)
-                    except Exception as ex:
-                        print(ex)
-                    self.ra.go_to_start_pose()
+                    self.ra.head_start_pose()
 
-            # workspace is clear
-            else:
-                print("Cleared the workspace")
-                print("Add more objects, then resume")
-                IPython.embed()
-
-            # return to starting position and begin new iteration
-            self.ra.move_to_start()
-            # self.ra.go_to_start_pose()
-            self.ra.head_start_pose()
-
-            c_img, d_img = self.robot.get_img_data()
+                    c_img, d_img = self.robot.get_img_data()
 
     def test(self):
         c_img = cv2.imread('debug_imgs/web.png')
@@ -621,7 +630,7 @@ if __name__ == "__main__":
 
     task = DeclutterDemo(viz=True)
     # rospy.spin()
-    simple = False
+    simple = True
     if simple:
         task.lego_demo()
         # task.test()

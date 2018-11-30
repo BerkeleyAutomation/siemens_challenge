@@ -134,11 +134,11 @@ class Detector():
         self.run_inference_for_single_image = run_inference_for_single_image
         self.run_inference_for_single_image_optimized = run_inference_for_single_image_optimized
 
-    def predict(self, image_path, thresh=.5, sess=None):
-        image = Image.open(image_path)
+    def predict(self, image_np, thresh=.5, sess=None):
+        # image = Image.open(image_path)
         IMAGE_SIZE = (6, 4)
 
-        image_np = load_image_into_numpy_array(image)
+        # image_np = load_image_into_numpy_array(image)
 
         image_np_expanded = np.expand_dims(image_np, axis=0)
         start_time = timer.time()
@@ -150,7 +150,7 @@ class Detector():
         else:
             output_dict = self.run_inference_for_single_image_optimized(image_np,sess)
         end_time = timer.time()
-        print("final time: " + str(end_time - start_time))
+        # print("final time: " + str(end_time - start_time))
         # Visualization of the results of a detection.
 
         vis_util.visualize_boxes_and_labels_on_image_array(image_np,

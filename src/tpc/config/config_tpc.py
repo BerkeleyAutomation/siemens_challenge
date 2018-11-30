@@ -27,7 +27,7 @@ HUES_TO_BINS = {'red':0, 'cyan': 1, 'yellow': 2, 'orange': 2}
 net_labels = {1: "utility", 2: "bottle", 3: "cup", 4: "fruit", 5: "assemblyPart", 6: "hammer", 7: "scissors", 8: "screwdriver", 9: "tape", 10: "toy", 11: "tube", 12: "wrench"}
 CONFIDENCE_THRESH = 0.3
 EVALUATE = False
-ISOLATED_TOL = 80
+ISOLATED_TOL = 130
 
 ASKING_FOR_HELP_POLICY = "NO_HELP" #Options: "NO HELP", "SIMPLE", "MODEL_BASED"
 NUM_ROBOTS_ON_NETWORK = 1
@@ -86,19 +86,19 @@ robot_name = "hsr"
 IMG_MODULE = "tpc.perception.image"
 
 #convenience parameter to change paths based on machine
-computer = "michael"
-if computer == "michael":
-	ROOT_DIR = '/media/autolab/1tb/data/'
-	DATA_PATH = ROOT_DIR + 'tpc/'
-	IMG_MODULE = 'tpc.perception.image'
-	WEB_PATH = '/home/autolab/Workspaces/michael_working/hsr_web'
-	SIEMENS_PATH = '/home/autolab/Workspaces/michael_working/siemens_challenge'
-elif computer == "chris":
-	ROOT_DIR = '/Users/chrispowers/Documents/research/tpc/'
-	DATA_PATH = ROOT_DIR + 'data/'
-	IMG_MODULE = 'tpc.perception.image'
-	WEB_PATH = '/Users/chrispowers/Documents/research/hsr_web'
-elif computer == "zisu":
-	WEB_PATH = '/home/zisu/simulator/hsr_web'
-	SIEMENS_PATH = '/home/zisu/simulator/siemens_challenge/'
-ROLLOUT_PATH = DATA_PATH+'rollouts-3-9/'
+# computer = "michael"
+# if computer == "michael":
+# 	ROOT_DIR = '/media/autolab/1tb/data/'
+# 	DATA_PATH = ROOT_DIR + 'tpc/'
+# 	IMG_MODULE = 'tpc.perception.image'
+# 	WEB_PATH = '/home/autolab/Workspaces/michael_working/hsr_web'
+# 	SIEMENS_PATH = '/home/autolab/Workspaces/michael_working/siemens_challenge'
+# elif computer == "chris":
+# 	ROOT_DIR = '/Users/chrispowers/Documents/research/tpc/'
+# 	DATA_PATH = ROOT_DIR + 'data/'
+# 	IMG_MODULE = 'tpc.perception.image'
+# 	WEB_PATH = '/Users/chrispowers/Documents/research/hsr_web'
+# elif computer == "zisu":
+# 	WEB_PATH = '/home/zisu/simulator/hsr_web'
+# 	SIEMENS_PATH = '/home/zisu/simulator/siemens_challenge/'
+# ROLLOUT_PATH = DATA_PATH+'rollouts-3-9/'

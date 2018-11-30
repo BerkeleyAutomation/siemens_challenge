@@ -27,7 +27,8 @@ class Robot_Actions():
         finished moving
 
         """
-        time.sleep(3)
+        # time.sleep(3)
+        time.sleep(0.1)
 
     def go_to_start_pose(self):
         """
@@ -92,7 +93,7 @@ class Robot_Actions():
         """
         curr_pos = self.get_position()
         start_pos = self.get_start_position()
-        print(curr_pos, start_pos)
+        # print(curr_pos, start_pos)
 
         y_dist = abs(curr_pos[1] - start_pos[1])
         x_dist = abs(curr_pos[0] - start_pos[0])
@@ -160,7 +161,8 @@ class Robot_Actions():
             rot = self.robot.get_rot(dir_vec)
 
         pose_name = self.robot.create_grasp_pose(cm[1], cm[0], z, rot)
-        time.sleep(2)
+        # time.sleep(2)
+        time.sleep(0.1)
         return pose_name
 
     def grasp_at_pose(self, pose_name):
@@ -177,15 +179,15 @@ class Robot_Actions():
         self.robot.open_gripper()
         # import ipdb;ipdb.set_trace()
         self.robot.move_to_pose(pose_name, 0.1)
-        # self.robot.move_to_pose(pose_name, 0.022)
+        self.robot.move_to_pose(pose_name, 0.02)
         # self.robot.move_to_pose(pose_name, 0.019)
         # time.sleep(1)
-        self.robot.move_to_pose(pose_name, 0.015)
+        # self.robot.move_to_pose(pose_name, 0.015)
         # self.robot.move_to_pose(pose_name, 0.01)
         self.robot.close_gripper()
-        self.robot.move_to_pose(pose_name, 0.2)
         # self.robot.move_to_pose(pose_name, 0.2)
-        # self.robot.move_to_pose(pose_name, 0.1)
+        # self.robot.move_to_pose(pose_name, 0.2)
+        self.robot.move_to_pose(pose_name, 0.1)
 
     def deposit_obj(self, class_num):
         """
@@ -267,14 +269,18 @@ class Robot_Actions():
         # self.move_base(x=-0.1)
         self.safe_wait()
 
-    def deposit_in_cubby(self):
+    def deposit_in_cubby(self, x_pos=0.0, z_pos=0.0, label=None):
         """
         deposit the object in a cubby
 
         """
-        self.robot.move_in_cubby()
+        self.robot.move_in_cubby(x_pos=x_pos, z_pos=z_pos)
+        if label == 3:
+            self.robot.move_base(z=0.233)
         self.robot.open_gripper()
         self.robot.close_gripper()
+        if label == 3:
+            self.robot.move_base(z=-0.233)
         self.robot.body_neutral_pose()
         self.robot.body_start_pose()
 
@@ -313,8 +319,8 @@ class Robot_Actions():
         """
         pose_name = self.img_coords2pose(cm, dir_vec, d_img)
         self.grasp_at_pose(pose_name)
-        # self.deposit_obj(class_num%3)
-        self.deposit_obj_fake_ar(class_num % 4)
+        # self.deposit_obj(class_num)
+        #self.deposit_obj_fake_ar(class_num % 4)
 
 
     def l_singulate(self, cm, dir_vec, d_img):

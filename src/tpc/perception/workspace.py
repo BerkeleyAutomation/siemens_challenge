@@ -134,7 +134,8 @@ class Workspace():
 
 		objts = robot.get('marker')
 
-		time.sleep(5)
+		# time.sleep(5)
+		time.sleep(0.1)
 		IPython.embed()
 		sd = objts.get_objects()
 
