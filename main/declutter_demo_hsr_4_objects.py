@@ -29,7 +29,11 @@ import tensorflow
 from tpc.detection.detector import Detector
 
 
-from core.hsr_robot_interface import Robot_Interface
+from hsr_core.hsr_robot_interface import Robot_Interface
+
+from hsr_core.sensors import RGBD
+
+
 
 img = importlib.import_module(cfg.IMG_MODULE)
 ColorImage = getattr(img, 'ColorImage')
@@ -71,7 +75,171 @@ class DeclutterDemo():
 
         self.viz = viz
 
-        # print("Finished Initialization")
+        self.cam = RGBD()
+
+    def run_grasp_gqcnn(self, c_img, d_img):
+        import json
+        import os
+        import time
+        import glob
+
+        import numpy as np
+
+        from PIL import Image
+        import matplotlib.pyplot as plt
+
+        from autolab_core import RigidTransform, YamlConfig, Logger
+        from perception import BinaryImage, CameraIntrinsics, ColorImage, DepthImage, RgbdImage
+        from visualization import Visualizer2D as vis
+
+        from gqcnn.grasping import RobustGraspingPolicy, CrossEntropyRobustGraspingPolicy, RgbdImageState, FullyConvolutionalGraspingPolicyParallelJaw, FullyConvolutionalGraspingPolicySuction
+        from gqcnn.utils import GripperMode, NoValidGraspsException
+
+        segmask_filename = None
+        camera_intr_filename = None
+        model_dir = None
+        config_filename = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                                '..',
+                                                '..',
+                                                'gqcnn/cfg/examples/dex-net_4.0_hsr.yaml')
+        fully_conv = None
+
+        assert not (fully_conv and depth_im_filename is not None and segmask_filename is None), 'Fully-Convolutional policy expects a segmask.'
+
+        if fully_conv and segmask_filename is None:
+            segmask_filename = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                                '..',
+                                                '..',
+                                                'gqcnn/data/examples/clutter/primesense/segmask_0.png')
+        if camera_intr_filename is None:
+            camera_intr_filename = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                                '..',
+                                                '..',
+                                                'gqcnn/data/calib/primesense/primesense.intr')    
+        if config_filename is None:
+            if fully_conv:
+                config_filename = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                                '..',
+                                                '..',
+                                                'gqcnn/cfg/examples/fc_policy.yaml')
+            else:
+                config_filename = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                                '..',
+                                                '..',
+                                                'gqcnn/cfg/examples/policy.yaml')
+       
+        # read config
+        config = YamlConfig(config_filename)
+        inpaint_rescale_factor = config['inpaint_rescale_factor']
+        policy_config = config['policy']
+
+        # set model if provided and make relative paths absolute
+        if model_dir is not None:
+            policy_config['metric']['gqcnn_model'] = model_dir
+        if 'gqcnn_model' in policy_config['metric'].keys() and not os.path.isabs(policy_config['metric']['gqcnn_model']):
+            policy_config['metric']['gqcnn_model'] = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                                                  '..',
+                                                                  '../gqcnn',
+                                                                  policy_config['metric']['gqcnn_model'])
+
+        # setup sensor
+        camera_intr = CameraIntrinsics.load(camera_intr_filename)
+            
+        # read images
+        depth_data = d_img
+        # crop image to make gqcnn focus on target zone of HSR
+        # desired cropped image: depth_data[190:330, 60:170]
+        depth_data[:, :245] = 0
+        depth_data[:, 420:] = 0
+        depth_data[:150, :] = 0
+        depth_data[310:, :] = 0
+        depth_im = DepthImage(depth_data, frame=camera_intr.frame)
+        rgb_img = c_img
+        #rgb_img_np = np.array(rgb_img).astype(np.uint8)
+        #rgb_img_cropped = rgb_img.crop((245, 150, 420, 310))
+        #plt.imshow(depth_data)
+        #plt.show()
+        color_im = ColorImage(np.zeros([depth_im.height, depth_im.width, 3]).astype(np.uint8), frame=camera_intr.frame)
+
+        
+        # optionally read a segmask
+        segmask = None
+        if segmask_filename is not None:
+            segmask = BinaryImage.open(segmask_filename)
+        valid_px_mask = depth_im.invalid_pixel_mask().inverse()
+        if segmask is None:
+            segmask = valid_px_mask
+        else:
+            segmask = segmask.mask_binary(valid_px_mask)
+        
+        # inpaint
+        depth_im = depth_im.inpaint(rescale_factor=inpaint_rescale_factor)
+            
+        if 'input_images' in policy_config['vis'].keys() and policy_config['vis']['input_images']:
+            vis.figure(size=(10,10))
+            num_plot = 1
+            if segmask is not None:
+                num_plot = 2
+            vis.subplot(1,num_plot,1)
+            vis.imshow(depth_im)
+            if segmask is not None:
+                vis.subplot(1,num_plot,2)
+                vis.imshow(segmask)
+            vis.show()
+            
+        # create state
+        rgbd_im = RgbdImage.from_color_and_depth(color_im, depth_im)
+        state = RgbdImageState(rgbd_im, camera_intr, segmask=segmask)
+
+        # set input sizes for fully-convolutional policy
+        if fully_conv:
+            policy_config['metric']['fully_conv_gqcnn_config']['im_height'] = depth_im.shape[0]
+            policy_config['metric']['fully_conv_gqcnn_config']['im_width'] = depth_im.shape[1]
+
+        # init policy
+        if fully_conv:
+            #TODO: @Vishal we should really be doing this in some factory policy
+            if policy_config['type'] == 'fully_conv_suction':
+                policy = FullyConvolutionalGraspingPolicySuction(policy_config)
+            elif policy_config['type'] == 'fully_conv_pj':
+                policy = FullyConvolutionalGraspingPolicyParallelJaw(policy_config)
+            else:
+                raise ValueError('Invalid fully-convolutional policy type: {}'.format(policy_config['type']))
+        else:
+            policy_type = 'cem'
+            if 'type' in policy_config.keys():
+                policy_type = policy_config['type']
+            if policy_type == 'ranking':
+                policy = RobustGraspingPolicy(policy_config)
+            elif policy_type == 'cem':
+                policy = CrossEntropyRobustGraspingPolicy(policy_config)
+            else:
+                raise ValueError('Invalid policy type: {}'.format(policy_type))
+
+        # query policy
+        policy_start = time.time()
+        action = policy(state)
+        grasp = [int(action.grasp.center[1]), int(action.grasp.center[0])]
+        grasp_direction = np.array([1.0, 0.0])
+        print('Planning took %.3f sec' %(time.time() - policy_start))
+        self.ra.execute_grasp(grasp, grasp_direction, d_img, 0, 500.0)
+
+        # vis final grasp
+        if policy_config['vis']['final_grasp']:
+            vis.figure(size=(40,40))
+            vis.subplot(1,2,1)
+            vis.imshow(rgbd_im.depth,
+                       vmin=policy_config['vis']['vmin'],
+                       vmax=policy_config['vis']['vmax'])
+            vis.grasp(action.grasp, scale=2.5, show_center=False, show_axis=True)
+            vis.title('Planned grasp at depth {0:.3f}m with Q={1:.3f}'.format(action.grasp.depth, action.q_value))
+            #vis.show()
+            #vis.figure(size=(10,10))
+            vis.subplot(1,2,2)
+            vis.imshow(rgbd_im.color)
+            vis.grasp(action.grasp, scale=2.5, show_center=False, show_axis=True)
+            vis.title('Planned grasp at depth {0:.3f}m with Q={1:.3f}'.format(action.grasp.depth, action.q_value))
+            vis.show()
 
     def run_grasp(self, bbox, c_img, col_img, workspace_img, d_img):
         '''
@@ -97,8 +265,7 @@ class DeclutterDemo():
             return
 
         # display_grasps(workspace_img, [group])
-
-        self.ra.execute_grasp(group.cm, group.dir, d_img, class_num=bbox.label)
+        self.ra.execute_grasp(group.cm, group.dir, d_img, bbox.label, 500.0)
 
     def run_singulate(self, singulator, d_img):
         """
@@ -198,11 +365,41 @@ class DeclutterDemo():
         hard_code = True
 
         # setup robot in front-facing start pose to take image of legos
-        self.ra.go_to_start_pose()
-        self.ra.set_start_position()
-        self.ra.head_start_pose()
+        #self.ra.go_to_start_pose()
+        #self.ra.set_start_position()
+        #self.ra.head_start_pose()
+        c_img, d_img = self.robot.get_img_data()
+        #c_img = self.cam.read_color_data()
+        #d_img = self.cam.read_depth_data()
+        #plt.imshow(c_img)
+        #plt.show()
+        d_numpy = np.asarray(d_img[:,:])
+        d_numpy = d_numpy/1000
+        # self.ra.move_base(z=-2.7)
+
+        # import ipdb; ipdb.set_trace()
+
+        
+        self.run_grasp_gqcnn(c_img, d_numpy)
+        return
+        self.run_grasp(to_grasp, c_img, col_img, workspace_img, d_img)
+    
+    def lego_demo_old(self):
+        """
+        demo that runs color based segmentation and declutters legos
+        """
+
+        # if true, use hard-coded deposit without AR markers
+        hard_code = True
+
+        # setup robot in front-facing start pose to take image of legos
+        #self.ra.go_to_start_pose()
+        #self.ra.set_start_position()
+        #self.ra.head_start_pose()
         c_img, d_img = self.robot.get_img_data()
 
+        d_numpy = np.asarray(d_img[:,:])
+        d_numpy = d_numpy/1000
         # self.ra.move_base(z=-2.7)
 
         # import ipdb; ipdb.set_trace()
@@ -248,72 +445,10 @@ class DeclutterDemo():
                                 self.run_grasp(to_grasp, c_img, col_img, workspace_img, d_img)
                             except Exception as ex:
                                 print(ex)
-                                self.ra.move_to_start()
-                                self.ra.head_start_pose()
+                                #self.ra.move_to_start()
+                                #self.ra.head_start_pose()
                                 c_img, d_img = self.robot.get_img_data()
                                 continue
-
-                            # print(self.ra.get_start_position(), self.ra.get_position())
-                            while True:
-                                try:
-                                    self.robot.body_neutral_pose()
-                                    break
-                                except Exception as ex:
-                                    print(ex)
-
-                            self.ra.move_to_start()
-
-                            # deposit lego in it's corresponding colored bin
-                            # offset_1 = 0.2
-                            # offset_2 = 0.5
-                            # offset_4 = 0.0
-                            offset_0 = -1.0
-                            offset_1 = -1.5
-                            offset_2 = -2.1
-                            offset_3 = -2.7
-
-                            # print(to_grasp.label)
-
-                            if hard_code:
-                                if to_grasp.label == 2: #yellow
-                                    # self.ra.move_base(z=-2.3)
-                                    self.ra.move_base(z=offset_2)
-                                    # self.ra.move_base(z=-1.6)
-                                    self.ra.deposit_in_cubby(x_pos=-0.13, z_pos=0.3, label=to_grasp.label)
-                                elif to_grasp.label == 1: #blue
-                                    # self.ra.move_base(z=-1.7)
-                                    self.ra.move_base(z=offset_1)
-                                    self.ra.deposit_in_cubby(x_pos=-0.13, z_pos=0.26, label=to_grasp.label)
-                                elif to_grasp.label == 0: #red
-                                    # self.ra.move_base(z=-1.1)
-                                    self.ra.move_base(z=offset_0)
-                                    self.ra.deposit_in_cubby(x_pos=-0.13, z_pos=0.33, label=to_grasp.label)
-                                elif to_grasp.label == 3:
-                                    self.ra.move_base(z=offset_3)
-                                    self.ra.deposit_in_cubby(x_pos=-0.34, z_pos=0.32, label=to_grasp.label)
-                                # self.ra.move_base(z=-1.6)
-                                # self.robot.body_neutral_pose()
-                                # self.robot.body_neutral_pose() #probably not required.
-
-                                # self.ra.move_base(z=1.6)
-                                if to_grasp.label == 2:
-                                    # self.ra.move_base(x=0.6)
-                                    # self.ra.move_base(z=1.6)
-                                    # self.ra.move_base(x=0.4)
-                                    self.ra.move_base(z=-offset_2)
-                                elif to_grasp.label == 1:
-                                    # self.ra.move_base(x=0.3)
-                                    self.ra.move_base(z=-offset_1)
-                                elif to_grasp.label == 0:
-                                    self.ra.move_base(z=-offset_0)
-                                elif to_grasp.label == 3:
-                                    self.ra.move_base(z=-offset_3)
-                            else:
-                                try:
-                                    self.ra.deposit_obj(to_grasp.label)
-                                except Exception as ex:
-                                    print(ex)
-                            # self.run_grasp(to_grasp, c_img, col_img, col_img, d_img)
                         else:
 
 
@@ -324,11 +459,12 @@ class DeclutterDemo():
 
                         # return to the position it was in before grasping
                         # self.ra.go_to_start_pose()
-                        self.ra.move_to_start() #probably not required.
-                        self.ra.head_start_pose()
-
+                        #self.ra.move_to_start() #probably not required.
+                        #self.ra.head_start_pose()
+                    x = raw_input()
+                    if x == 'exit':
+                        break
                     c_img, d_img = self.robot.get_img_data()
-
 
     def test(self):
         c_img = cv2.imread('debug_imgs/web.png')

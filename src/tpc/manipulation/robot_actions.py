@@ -298,7 +298,7 @@ class Robot_Actions():
         """
         self.robot.move_base(x=x, y=y, z=z)
 
-    def execute_grasp(self, cm, dir_vec, d_img, class_num):
+    def execute_grasp(self, cm, dir_vec, d_img, class_num, lin_weight=None):
         """
         execute a grasp
 
@@ -317,6 +317,15 @@ class Robot_Actions():
             which bin to deposit in
 
         """
+        if lin_weight is not None:
+            self.robot.linear_weight = lin_weight
+        print('cm')
+        print(cm)
+        print('dir_vec')
+        print(dir_vec)
+        import matplotlib.pyplot as plt
+        #plt.imshow(d_img)
+        #plt.show()
         pose_name = self.img_coords2pose(cm, dir_vec, d_img)
         self.grasp_at_pose(pose_name)
         # self.deposit_obj(class_num)
