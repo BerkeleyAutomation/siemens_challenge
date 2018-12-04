@@ -328,8 +328,30 @@ class Robot_Actions():
         #plt.show()
         pose_name = self.img_coords2pose(cm, dir_vec, d_img)
         self.grasp_at_pose(pose_name)
-        # self.deposit_obj(class_num)
+        #self.deposit_obj(class_num)
         #self.deposit_obj_fake_ar(class_num % 4)
+
+    def execute_2DOF_grasp(self, depth_m, grasp_angle_dexnet):
+        grasp_angle_hsr = grasp_angle_dexnet
+        # rotate angle by 180 degrees if dexnet gives angle out of bound for hsr
+        if grasp_angle_dexnet < -1.92:
+            grasp_angle_hsr = grasp_angle_dexnet + 3.14
+        self.robot.open_gripper()
+        self.robot.whole_body.move_to_joint_positions({'arm_roll_joint': 0.0,
+                                        'arm_lift_joint': 0.1, 'arm_flex_joint': -1.83,
+                                        'wrist_flex_joint': -1.37,
+                                        'wrist_roll_joint': grasp_angle_hsr})
+
+        if depth_m > 0.91:
+            z = 0
+        else:
+            z = 0.91 - depth_m
+
+        #self.robot.whole_body.move_to_joint_positions({'arm_lift_joint': z})
+        #time.sleep(1)
+        #self.robot.close_gripper()
+        #time.sleep(1)
+        #self.robot.whole_body.move_to_joint_positions({'arm_lift_joint': z + 0.2})
 
 
     def l_singulate(self, cm, dir_vec, d_img):

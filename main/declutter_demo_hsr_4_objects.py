@@ -8,6 +8,7 @@ from copy import deepcopy
 import sys
 import thread
 import tf
+import math
 
 import importlib
 import matplotlib.pyplot as plt
@@ -219,10 +220,19 @@ class DeclutterDemo():
         # query policy
         policy_start = time.time()
         action = policy(state)
-        grasp = [int(action.grasp.center[1]), int(action.grasp.center[0])]
-        grasp_direction = np.array([1.0, 0.0])
-        print('Planning took %.3f sec' %(time.time() - policy_start))
-        self.ra.execute_grasp(grasp, grasp_direction, d_img, 0, 500.0)
+        grasp_center = [int(action.grasp.center[1]), int(action.grasp.center[0])]
+        grasp_angle = action.grasp.angle
+
+        print('grasp_angle %f '%(grasp_angle))
+
+        # execute planned grasp with hsr interface
+        #self.execute_gqcnn(grasp_center, grasp_angle, d_img*1000)
+
+        grasp_depth_m = action.grasp.depth
+        print('grasp_depth_m %f' %(grasp_depth_m))
+
+        # execute 2DOF grasp
+        self.execute_gqcnn_2DOF(grasp_depth_m, grasp_angle)
 
         # vis final grasp
         if policy_config['vis']['final_grasp']:
@@ -240,6 +250,15 @@ class DeclutterDemo():
             vis.grasp(action.grasp, scale=2.5, show_center=False, show_axis=True)
             vis.title('Planned grasp at depth {0:.3f}m with Q={1:.3f}'.format(action.grasp.depth, action.q_value))
             vis.show()
+
+    def execute_gqcnn(self, grasp_center, grasp_angle, depth_image_mm):
+        grasp_direction = np.array([math.sin(grasp_angle), math.cos(grasp_angle)])
+        grasp_direction_normalized = grasp_direction / np.linalg.norm(grasp_direction)
+        self.ra.execute_grasp(grasp_center, grasp_direction_normalized, depth_image_mm, 0, 500.0)
+
+    def execute_gqcnn_2DOF(self, depth_m, grasp_angle):
+        self.ra.execute_2DOF_grasp(depth_m, grasp_angle)
+
 
     def run_grasp(self, bbox, c_img, col_img, workspace_img, d_img):
         '''
@@ -363,7 +382,13 @@ class DeclutterDemo():
 
         # if true, use hard-coded deposit without AR markers
         hard_code = True
-
+        self.robot.whole_body.move_to_joint_positions({'arm_flex_joint': -0.005953039901891888,
+                                        'arm_lift_joint': 3.5673664703075522e-06,
+                                        'arm_roll_joint': -1.6400026753088877,
+                                        'head_pan_joint': 0.24998440577459347,
+                                        'head_tilt_joint': -1.3270548266651048,
+                                        'wrist_flex_joint': -1.905642402348724,
+                                        'wrist_roll_joint': 1.8290815908368243})
         # setup robot in front-facing start pose to take image of legos
         #self.ra.go_to_start_pose()
         #self.ra.set_start_position()
@@ -373,14 +398,14 @@ class DeclutterDemo():
         #d_img = self.cam.read_depth_data()
         #plt.imshow(c_img)
         #plt.show()
-        d_numpy = np.asarray(d_img[:,:])
-        d_numpy = d_numpy/1000
+        depth_image_mm = np.asarray(d_img[:,:])
+        depth_image_m = depth_image_mm/1000
         # self.ra.move_base(z=-2.7)
 
         # import ipdb; ipdb.set_trace()
 
         
-        self.run_grasp_gqcnn(c_img, d_numpy)
+        self.run_grasp_gqcnn(c_img, depth_image_m)
         return
         self.run_grasp(to_grasp, c_img, col_img, workspace_img, d_img)
     
@@ -398,8 +423,7 @@ class DeclutterDemo():
         #self.ra.head_start_pose()
         c_img, d_img = self.robot.get_img_data()
 
-        d_numpy = np.asarray(d_img[:,:])
-        d_numpy = d_numpy/1000
+
         # self.ra.move_base(z=-2.7)
 
         # import ipdb; ipdb.set_trace()
