@@ -3,6 +3,11 @@ import IPython
 import tpc.config.config_tpc as cfg
 import numpy as np
 import time
+import math
+import rospy
+import tf2_ros
+import geometry_msgs.msg
+import tf2_geometry_msgs
 
 class Robot_Actions():
     """
@@ -20,6 +25,8 @@ class Robot_Actions():
 
     def __init__(self, robot):
         self.robot = robot
+        self.tfBuffer = tf2_ros.Buffer()
+        self.listener = tf2_ros.TransformListener(self.tfBuffer)
 
     def safe_wait(self):
         """
@@ -327,29 +334,50 @@ class Robot_Actions():
         #plt.imshow(d_img)
         #plt.show()
         pose_name = self.img_coords2pose(cm, dir_vec, d_img)
-        self.grasp_at_pose(pose_name)
+        #self.grasp_at_pose(pose_name)
         #self.deposit_obj(class_num)
         #self.deposit_obj_fake_ar(class_num % 4)
 
-    def execute_2DOF_grasp(self, depth_m, grasp_angle_dexnet):
+    def execute_2DOF_grasp(self, grasp_center, depth_m, grasp_angle_dexnet, depth_img):
+        grasp_dir = [-math.sin(grasp_angle_dexnet), -math.cos(grasp_angle_dexnet)]
+        print('dir_vec')
+        print(grasp_dir)
         grasp_angle_hsr = grasp_angle_dexnet
         # rotate angle by 180 degrees if dexnet gives angle out of bound for hsr
         if grasp_angle_dexnet < -1.92:
             grasp_angle_hsr = grasp_angle_dexnet + 3.14
+
+
+        # create 3D pose in head camera frame
+        grasp_center_3d = self.robot.transform_pixel_to_pose(grasp_center)
+        print('grasp center 3d')
+        print(grasp_center_3d)
+        pose = geometry_msgs.msg.PoseStamped()
+        pose.header.stamp = rospy.Time.now()
+        pose.header.frame_id = "head_rgbd_sensor_gazebo_frame"
+        pose.pose.position.x = grasp_center_3d[0]
+        pose.pose.position.y = grasp_center_3d[1]
+        pose.pose.position.z = grasp_center_3d[2]
+        trans = self.tfBuffer.lookup_transform('head_rgbd_sensor_gazebo_frame', 'map', rospy.Time())
+        print('trans.transform.translation')
+        print(trans.transform.translation)
+        pose_transformed = tf2_geometry_msgs.do_transform_pose(pose, trans)
+        print('pose_transformed')
+        print(pose_transformed)
         self.robot.open_gripper()
         self.robot.whole_body.move_to_joint_positions({'arm_roll_joint': 0.0,
-                                        'arm_lift_joint': 0.1, 'arm_flex_joint': -1.83,
+                                        'arm_lift_joint': 0.1,
+                                        'arm_flex_joint': -1.83,
                                         'wrist_flex_joint': -1.37,
-                                        'wrist_roll_joint': grasp_angle_hsr})
-
+                                        'wrist_roll_joint': 0.0})
+        #                                'wrist_roll_joint': grasp_angle_hsr})
         if depth_m > 0.91:
             z = 0
         else:
             z = 0.91 - depth_m
-
-        #self.robot.whole_body.move_to_joint_positions({'arm_lift_joint': z})
+        self.robot.whole_body.move_to_joint_positions({'arm_lift_joint': z})
         #time.sleep(1)
-        #self.robot.close_gripper()
+        self.robot.close_gripper()
         #time.sleep(1)
         #self.robot.whole_body.move_to_joint_positions({'arm_lift_joint': z + 0.2})
 

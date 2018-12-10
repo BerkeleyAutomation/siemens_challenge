@@ -219,20 +219,22 @@ class DeclutterDemo():
 
         # query policy
         policy_start = time.time()
-        action = policy(state)
-        grasp_center = [int(action.grasp.center[1]), int(action.grasp.center[0])]
-        grasp_angle = action.grasp.angle
+        #action = policy(state)
+        #grasp_center = [int(action.grasp.center[1]), int(action.grasp.center[0])]
+        #grasp_angle = action.grasp.angle
+        #grasp_depth_m = action.grasp.depth
+        #print(grasp_angle)
+        grasp_center = [254, 349]
+        grasp_angle = -2.5044
+        grasp_depth_m = 0.91
 
-        print('grasp_angle %f '%(grasp_angle))
+        print('grasp_center %s '%(grasp_center))
 
         # execute planned grasp with hsr interface
         #self.execute_gqcnn(grasp_center, grasp_angle, d_img*1000)
 
-        grasp_depth_m = action.grasp.depth
-        print('grasp_depth_m %f' %(grasp_depth_m))
-
         # execute 2DOF grasp
-        self.execute_gqcnn_2DOF(grasp_depth_m, grasp_angle)
+        self.execute_gqcnn_2DOF(grasp_center, grasp_depth_m, grasp_angle, d_img)
 
         # vis final grasp
         if policy_config['vis']['final_grasp']:
@@ -256,8 +258,8 @@ class DeclutterDemo():
         grasp_direction_normalized = grasp_direction / np.linalg.norm(grasp_direction)
         self.ra.execute_grasp(grasp_center, grasp_direction_normalized, depth_image_mm, 0, 500.0)
 
-    def execute_gqcnn_2DOF(self, depth_m, grasp_angle):
-        self.ra.execute_2DOF_grasp(depth_m, grasp_angle)
+    def execute_gqcnn_2DOF(self, grasp_center, depth_m, grasp_angle, depth_img):
+        self.ra.execute_2DOF_grasp(grasp_center, depth_m, grasp_angle, depth_img)
 
 
     def run_grasp(self, bbox, c_img, col_img, workspace_img, d_img):
@@ -406,8 +408,6 @@ class DeclutterDemo():
 
         
         self.run_grasp_gqcnn(c_img, depth_image_m)
-        return
-        self.run_grasp(to_grasp, c_img, col_img, workspace_img, d_img)
     
     def lego_demo_old(self):
         """
@@ -416,6 +416,14 @@ class DeclutterDemo():
 
         # if true, use hard-coded deposit without AR markers
         hard_code = True
+
+        self.robot.whole_body.move_to_joint_positions({'arm_flex_joint': -0.005953039901891888,
+                                        'arm_lift_joint': 3.5673664703075522e-06,
+                                        'arm_roll_joint': -1.6400026753088877,
+                                        'head_pan_joint': 0.24998440577459347,
+                                        'head_tilt_joint': -1.3270548266651048,
+                                        'wrist_flex_joint': -1.905642402348724,
+                                        'wrist_roll_joint': 1.8290815908368243})
 
         # setup robot in front-facing start pose to take image of legos
         #self.ra.go_to_start_pose()
