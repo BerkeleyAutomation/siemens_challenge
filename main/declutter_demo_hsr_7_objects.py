@@ -267,9 +267,10 @@ class DeclutterDemo():
                                 except Exception as ex:
                                     print(ex)
 
-			    # import ipdb; ipdb.set_trace()
-                            self.ra.move_to_start()
-                            self.ra.go_to_start_pose()
+                            # import ipdb;ipdb.set_trace()
+                            self.ra.move_base_abs()
+                            # self.ra.move_to_start()
+                            # self.ra.go_to_start_pose()
 
                             # deposit lego in it's corresponding colored bin
                             # offset_1 = 0.2
@@ -280,72 +281,126 @@ class DeclutterDemo():
                             offset_2 = -2.1
                             offset_3 = -2.7
 
-                            # print(to_grasp.label)
-			    
-			    import ipdb; ipdb.set_trace()
+                            # offset_x = -0.3
+                            # self.ra.move_base_abs(x=-0.0, y=0.0, z=-np.pi / 2.0)
+                            print(to_grasp.label)
+
                             if hard_code:
                                 if to_grasp.label == 2: #yellow
                                     # self.ra.move_base(z=-2.3)
                                     # self.ra.move_base(z=offset_2)
                                     # self.ra.move_base(z=-1.6)
-				    self.ra.move_base(z=offset_1)
-				    self.ra.move_base(x=0.4)
-				    self.ra.move_base_abs(x=-0.65, y=-0.4, z=offset_1)
-				    import ipdb; ipdb.set_trace()
-                                    self.ra.deposit_in_cubby(x_pos=0.01, z_pos=0, label=to_grasp.label)
+                                    # self.ra.move_base(z=offset_1)
+                                    # self.ra.move_base(x=0.4)
+                                    self.ra.move_base_abs(x=-0.6, y=0.0, z=-np.pi/2.0)
+                                    # import ipdb; ipdb.set_trace()
+                                    # self.robot.move_in_cubby(x_pos=-0.65, z_pos=0.4)
+                                    self.ra.deposit_in_cubby(x_pos=-0.13, z_pos=0.26, label=to_grasp.label)
+                                    # self.ra.deposit_in_cubby(x_pos=0.01, z_pos=0.0, label=to_grasp.label)
+
                                 elif to_grasp.label == 1: #blue
                                     # self.ra.move_base(z=-1.7)
-				    # import ipdb; ipdb.set_trace()
-				    # self.ra.move_base(z=1.5708)
-				    self.ra.move_base(z=offset_1)
-				    self.ra.move_base(x = 0.4)
-				    self.ra.move_base_abs(x=-0.35, y=-0.4, z=offset_1)
-				    import ipdb; ipdb.set_trace()
-                                    self.ra.deposit_in_cubby(x_pos=0.01, z_pos=0, label=to_grasp.label)
-				    import ipdb; ipdb.set_trace()
+                                    #  import ipdb; ipdb.set_trace()
+                                    #  self.ra.move_base(z=1.5708)
+                                    self.ra.move_base_abs(x=-0.3, y=0.0, z=-np.pi / 2.0)
+                                    # self.ra.move_base(z=offset_1)
+                                    # self.ra.move_base(x = 0.4)
+                                    # self.ra.move_base_abs(x=-0.35, y=-0.4, z=offset_1)
+                                    # import ipdb; ipdb.set_trace()
+
+                                    self.ra.deposit_in_cubby(x_pos=-0.13, z_pos=0.26, label=to_grasp.label)
+                                    # import ipdb; ipdb.set_trace()
                                 elif to_grasp.label == 0: #red
                                     # self.ra.move_base(z=-1.1)
                                     # self.ra.move_base(z=offset_0)
-				    self.ra.move_base(z=offset_1)
-				    self.ra.move_base(x=0.4)
-				    import ipdb; ipdb.set_trace()
-                                    self.ra.deposit_in_cubby(x_pos=-0.02, z_pos=0, label=to_grasp.label)
-				    # import ipdb; ipdb.set_trace()
+                                    self.ra.move_base_abs(x=-0.0, y=0.0, z=-np.pi / 2.0)
+
+                                    self.ra.deposit_in_cubby(x_pos=-0.13, z_pos=0.26, label=to_grasp.label)
+                                    # import ipdb; ipdb.set_trace()
                                 elif to_grasp.label == 3: #money
-                                    self.ra.move_base(z=offset_1)
-				    self.ra.move_base(x = 0.4)
-				    self.ra.move_base_abs(x=-0.35, y=-0.4, z=offset_1)
-                                    self.ra.deposit_in_cubby(x_pos=-0.34, z_pos=0, label=to_grasp.label)
-				elif to_grasp.label == 4: #towel
-                                    self.ra.move_base(z=offset_1)
-				    self.ra.move_base(x = 0.4)
-				    self.ra.move_base_abs(x=-0.65, y=-0.4, z=offset_1)
-                                    self.ra.deposit_in_cubby(x_pos=-0.34, z_pos=0, label=to_grasp.label)
-				elif to_grasp.label == 5: #tongs
-                                    self.ra.move_base(z=offset_1)
-				    self.ra.move_base(x = 0.45)
-                                    self.ra.deposit_in_cubby(x_pos=-0.34, z_pos=0, label=to_grasp.label)
-				    import ipdb; ipdb.set_trace()
+                                    # self.ra.move_base(z=offset_1)
+                                    # self.ra.move_base(x = 0.4)
+                                    # self.ra.move_base_abs(x=-0.35, y=-0.4, z=offset_1)
+
+                                    self.robot.move_in_cubby(x_pos=-0.34, z_pos=0.0)
+                                    self.ra.move_base_abs(x=-0.3, y=0.0, z=-np.pi / 2.0)
+                                    self.ra.move_base(x=0.1)
+                                    self.robot.open_gripper()
+                                    self.robot.close_gripper()
+                                    # if label == 3 or label == 4 or label == 5:
+                                    #     self.robot.move_base(x=-0.30)
+                                    self.ra.move_base(x=-0.2)
+                                    self.ra.move_base_abs()
+                                    self.robot.body_neutral_pose()
+                                    self.robot.body_start_pose()
+                                    time.sleep(2)
+
+
+                                    # self.robot.move_in_cubby(y_pos=-0.1, z_pos=0.0)
+
+                                    # self.ra.deposit_in_cubby(x_pos=-0.1, z_pos=0.0, label=to_grasp.label)
+                                elif to_grasp.label == 4: #towel
+
+                                    # self.ra.move_base_abs(x=-0.6, y=0.0, z=-np.pi / 2.0)
+
+                                    self.robot.move_in_cubby(x_pos=-0.34, z_pos=0.0)
+                                    self.ra.move_base_abs(x=-0.6, y=0.0, z=-np.pi / 2.0)
+                                    self.ra.move_base(x=0.1)
+                                    self.robot.open_gripper()
+                                    self.robot.close_gripper()
+                                    # if label == 3 or label == 4 or label == 5:
+                                    #     self.robot.move_base(x=-0.30)
+                                    self.ra.move_base(x=-0.2)
+                                    self.ra.move_base_abs()
+                                    self.robot.body_neutral_pose()
+                                    self.robot.body_start_pose()
+                                    time.sleep(2)
+
+                                    # self.ra.move_base(z=offset_1)
+                                    # self.ra.move_base(x = 0.4)
+                                    # self.ra.move_base_abs(x=-0.65, y=-0.4, z=offset_1)
+                                    # self.ra.deposit_in_cubby(x_pos=-0.34, z_pos=0.0, label=to_grasp.label)
+                                elif to_grasp.label == 5: #tongs
+                                    # self.ra.move_base_abs(x=-0.0, y=0.0, z=-np.pi / 2.0)
+
+
+                                    self.robot.move_in_cubby(x_pos=-0.34, z_pos=0.0)
+                                    self.ra.move_base_abs(x=-0.0, y=0.0, z=-np.pi / 2.0)
+                                    self.ra.move_base(x=0.1)
+                                    self.robot.open_gripper()
+                                    self.robot.close_gripper()
+                                    # if label == 3 or label == 4 or label == 5:
+                                    #     self.robot.move_base(x=-0.30)
+                                    self.ra.move_base(x=-0.2)
+                                    self.ra.move_base_abs()
+                                    self.robot.body_neutral_pose()
+                                    self.robot.body_start_pose()
+                                    time.sleep(2)
+
+                                    # self.ra.move_base(z=offset_1)
+                                    # self.ra.move_base(x = 0.45)
+                                    # self.ra.deposit_in_cubby(x_pos=-0.34, z_pos=0.0, label=to_grasp.label)
+                                    # import ipdb; ipdb.set_trace()
                                 # self.ra.move_base(z=-1.6)
                                 # self.robot.body_neutral_pose()
                                 # self.robot.body_neutral_pose() #probably not required.
                                 # self.ra.move_base(z=1.6)
-                                if to_grasp.label == 2:
-                                    # self.ra.move_base(x=0.6)
-                                    # self.ra.move_base(z=1.6)
-                                    # self.ra.move_base(x=0.4)
-                                    self.ra.move_base(z=-offset_1)
-                                elif to_grasp.label == 1:
-                                    # self.ra.move_base(x=0.3)
-                                    self.ra.move_base(z=-offset_1)
-                                elif to_grasp.label == 0:
-                                    self.ra.move_base(z=-offset_1)
-                                elif to_grasp.label == 3:
-                                    self.ra.move_base(z=-offset_1)
-				elif to_grasp.label == 4:
-                                    self.ra.move_base(z=-offset_1)
-				elif to_grasp.label == 5:
-                                    self.ra.move_base(z=-offset_1)
+                                # if to_grasp.label == 2:
+                                #     # self.ra.move_base(x=0.6)
+                                #     # self.ra.move_base(z=1.6)
+                                #     # self.ra.move_base(x=0.4)
+                                #     self.ra.move_base(z=-offset_1)
+                                # elif to_grasp.label == 1:
+                                #     # self.ra.move_base(x=0.3)
+                                #     self.ra.move_base(z=-offset_1)
+                                # elif to_grasp.label == 0:
+                                #     self.ra.move_base(z=-offset_1)
+                                # elif to_grasp.label == 3:
+                                #     self.ra.move_base(z=-offset_1)
+                                # elif to_grasp.label == 4:
+                                #     self.ra.move_base(z=-offset_1)
+                                # elif to_grasp.label == 5:
+                                #     self.ra.move_base(z=-offset_1)
                             else:
                                 try:
                                     self.ra.deposit_obj(to_grasp.label)
@@ -362,6 +417,7 @@ class DeclutterDemo():
 
                         # return to the position it was in before grasping
                         # self.ra.go_to_start_pose()
+                        self.ra.move_base_abs()
                         self.ra.move_to_start() #probably not required.
                         self.ra.head_start_pose()
 

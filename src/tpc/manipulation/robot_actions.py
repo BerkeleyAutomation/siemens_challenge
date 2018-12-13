@@ -275,12 +275,12 @@ class Robot_Actions():
 
         """
         self.robot.move_in_cubby(x_pos=x_pos, z_pos=z_pos)
-        if label == 3 or label == 4 or label == 5:
-            self.robot.move_base(x=0.30)
+        # if label == 3 or label == 4 or label == 5:
+        #     self.robot.move_base(x=0.30)
         self.robot.open_gripper()
         self.robot.close_gripper()
-        if label == 3 or label == 4 or label == 5:
-            self.robot.move_base(x=-0.30)
+        # if label == 3 or label == 4 or label == 5:
+        #     self.robot.move_base(x=-0.30)
         self.robot.body_neutral_pose()
         self.robot.body_start_pose()
 
