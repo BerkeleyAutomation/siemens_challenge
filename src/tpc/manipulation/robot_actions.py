@@ -269,18 +269,18 @@ class Robot_Actions():
         # self.move_base(x=-0.1)
         self.safe_wait()
 
-    def deposit_in_cubby(self, x_pos=0.0, z_pos=0.0, label=None):
+    def deposit_in_cubby(self, x_pos=0.0, y_pos=0.0, z_pos=0.0, label=None):
         """
         deposit the object in a cubby
 
         """
         self.robot.move_in_cubby(x_pos=x_pos, z_pos=z_pos)
-        if label == 3:
-            self.robot.move_base(z=0.233)
+        if label == 3 or label == 4 or label == 5:
+            self.robot.move_base(x=0.30)
         self.robot.open_gripper()
         self.robot.close_gripper()
-        if label == 3:
-            self.robot.move_base(z=-0.233)
+        if label == 3 or label == 4 or label == 5:
+            self.robot.move_base(x=-0.30)
         self.robot.body_neutral_pose()
         self.robot.body_start_pose()
 
@@ -297,6 +297,20 @@ class Robot_Actions():
 
         """
         self.robot.move_base(x=x, y=y, z=z)
+
+    def move_base_abs(self, x=0, y=0, z=0):
+        """
+        move base of robot to desired
+        x, y, z coordinates
+
+        '''
+        Parameters
+        ----------
+        x, y, z : float
+            coordinates to move to
+
+        """
+        self.robot.move_base_abs(x=x, y=y, z=z)
 
     def execute_grasp(self, cm, dir_vec, d_img, class_num):
         """
