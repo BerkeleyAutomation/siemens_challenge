@@ -247,18 +247,18 @@ class DeclutterDemo():
         #self.execute_gqcnn(grasp_center, grasp_angle, d_img*1000)
 
         # execute 2DOF grasp
-        #self.execute_gqcnn_2DOF(grasp_center, grasp_depth_m, grasp_angle)
+        self.execute_gqcnn_2DOF(grasp_center, grasp_depth_m, grasp_angle, d_img*1000)
 
         # show grasp in rviz
-        self.ra.show_grasp_in_rviz(grasp_center, grasp_depth_m, grasp_angle)
+        #self.ra.show_grasp_in_rviz(grasp_center, grasp_depth_m, grasp_angle, d_img*1000)
 
     def execute_gqcnn(self, grasp_center, grasp_angle, depth_image_mm):
         grasp_direction = np.array([math.sin(grasp_angle), math.cos(grasp_angle)])
         grasp_direction_normalized = grasp_direction / np.linalg.norm(grasp_direction)
         self.ra.execute_grasp(grasp_center, grasp_direction_normalized, depth_image_mm, 0, 500.0)
 
-    def execute_gqcnn_2DOF(self, grasp_center, depth_m, grasp_angle):
-        self.ra.execute_2DOF_grasp(grasp_center, depth_m, grasp_angle)
+    def execute_gqcnn_2DOF(self, grasp_center, depth_m, grasp_angle, d_img):
+        self.ra.execute_2DOF_grasp(grasp_center, depth_m, grasp_angle, d_img)
 
 
     def run_grasp(self, bbox, c_img, col_img, workspace_img, d_img):
@@ -283,7 +283,9 @@ class DeclutterDemo():
             group = bbox.to_group(c_img, col_img)
         except ValueError:
             return
-
+        print('grasp center pixels')
+        print(group.cm)
+        return
         # display_grasps(workspace_img, [group])
         self.ra.execute_grasp(group.cm, group.dir, d_img, bbox.label, 500.0)
 
@@ -386,13 +388,7 @@ class DeclutterDemo():
 
 
     def lego_demo(self):
-        """
-        demo that runs color based segmentation and declutters legos
-        """
-
-        # if true, use hard-coded deposit without AR markers
-        hard_code = True
-        #self.go_to_start_pose()
+        self.go_to_start_pose()
         c_img, d_img = self.robot.get_img_data()
         while (c_img is None or d_img is None):
             c_img, d_img = self.robot.get_img_data()
@@ -410,13 +406,13 @@ class DeclutterDemo():
         # if true, use hard-coded deposit without AR markers
         hard_code = True
 
-        self.robot.whole_body.move_to_joint_positions({'arm_flex_joint': -0.005953039901891888,
-                                        'arm_lift_joint': 3.5673664703075522e-06,
-                                        'arm_roll_joint': -1.6400026753088877,
-                                        'head_pan_joint': 0.24998440577459347,
-                                        'head_tilt_joint': -1.3270548266651048,
-                                        'wrist_flex_joint': -1.570003402348724,
-                                        'wrist_roll_joint': 0})
+        #self.robot.whole_body.move_to_joint_positions({'arm_flex_joint': -0.005953039901891888,
+        #                                'arm_lift_joint': 3.5673664703075522e-06,
+        #                                'arm_roll_joint': -1.6400026753088877,
+        #                                'head_pan_joint': 0.24998440577459347,
+        #                                'head_tilt_joint': -1.3270548266651048,
+        #                                'wrist_flex_joint': -1.570003402348724,
+        #                                'wrist_roll_joint': 0})
 
         # setup robot in front-facing start pose to take image of legos
         #self.ra.go_to_start_pose()
@@ -428,7 +424,8 @@ class DeclutterDemo():
         # self.ra.move_base(z=-2.7)
 
         # import ipdb; ipdb.set_trace()
-
+        while c_img is None or d_img is None:
+            c_img, d_img = self.robot.get_img_data()
         with self.det.detection_graph.as_default():
             with tensorflow.Session() as sess:
                 while not (c_img is None or d_img is None):

@@ -331,24 +331,6 @@ class Robot_Actions():
         #self.deposit_obj(class_num)
         #self.deposit_obj_fake_ar(class_num % 4)
 
-    def transform_head_rgbd_sensor_pixel_to_map(self, position, depth):
-        pose_3d = self.robot.transform_pixel_to_pose(position)
-        print(pose_3d)
-        rgbd_pose = geometry_msgs.msg.PoseStamped()
-        rgbd_pose.header.stamp = rospy.Time.now()
-        rgbd_pose.header.frame_id = "head_rgbd_sensor_link"
-        rgbd_pose.pose.position.x = pose_3d[0]
-        rgbd_pose.pose.position.y = pose_3d[1]
-        rgbd_pose.pose.position.z = pose_3d[2]
-        trans = self.tfBuffer.lookup_transform('map', 'head_rgbd_sensor_link', rospy.Time())
-        pose_transformed = tf2_geometry_msgs.do_transform_pose(rgbd_pose, trans)
-        rgbd_pub = rospy.Publisher('desired_grasp_center_rgbd_frame', geometry_msgs.msg.PoseStamped, queue_size=10)
-        map_pub = rospy.Publisher('desired_grasp_center_map_frame', geometry_msgs.msg.PoseStamped, queue_size=10)
-        while True:
-            rgbd_pub.publish(rgbd_pose)
-            map_pub.publish(pose_transformed)
-        return pose_transformed
-
     def compute_actual_grasp_center(self):
         pose = geometry_msgs.msg.PoseStamped()
         pose.header.stamp = rospy.Time.now()
@@ -361,9 +343,11 @@ class Robot_Actions():
         return pose_transformed
 
     def transform_dexnet_angle(self, grasp_angle_dexnet):
+        # rgbd camera is rotated by 0.32 radian, need to compensate that in angle
+        grasp_angle_dexnet -= 0.32
         # rotate angle by 180 degrees if dexnet gives angle out of bound for hsr
         if grasp_angle_dexnet < -1.92:
-            grasp_angle_hsr = grasp_angle_dexnet + 3.14
+            grasp_angle_hsr = grasp_angle_dexnet + np.pi
         else:
             grasp_angle_hsr = grasp_angle_dexnet
         return grasp_angle_hsr
@@ -371,11 +355,9 @@ class Robot_Actions():
     def adjust_grasp_center(self, desired_grasp_center, actual_grasp_center):
         difference_x = desired_grasp_center.pose.position.x - actual_grasp_center.pose.position.x
         difference_y = desired_grasp_center.pose.position.y - actual_grasp_center.pose.position.y
-        print('difference between them')
-        print([difference_x, difference_y])
         self.robot.omni_base.go_rel(difference_x, difference_y, 0.0, 0)
-        self.robot.whole_body.move_to_joint_positions({'head_pan_joint': 0.24998440577459347,
-                                                        'head_tilt_joint': -1.3270548266651048})
+        print('new difference between them')
+        print([abs(difference_x), abs(difference_y)])
 
     def go_to_start_pose(self, grasp_angle_hsr):
         self.robot.open_gripper()
@@ -385,34 +367,50 @@ class Robot_Actions():
                                         'wrist_flex_joint': -1.31,
                                         'wrist_roll_joint': grasp_angle_hsr})
 
-    def show_grasp_in_rviz(self, grasp_center, depth_m, grasp_angle_dexnet):
-        grasp_angle_hsr = self.transform_dexnet_angle(grasp_angle_dexnet)
-        desired_grasp_center = self.transform_head_rgbd_sensor_pixel_to_map(grasp_center, depth_m)
+    def show_grasp_in_rviz(self, grasp_center, depth_m, grasp_angle_dexnet, d_img):
+        desired_grasp_center = self.get_desired_grasp_in_map_frame()
         trans_pub = rospy.Publisher('desired_grasp_center', geometry_msgs.msg.PoseStamped, queue_size=10)
-        #while True:
-        #    trans_pub.publish(desired_grasp_center)
+        while True:
+            trans_pub.publish(desired_grasp_center)
 
-    def execute_2DOF_grasp(self, grasp_center, depth_m, grasp_angle_dexnet):
+    def get_desired_grasp_in_map_frame(self):
+        pose = geometry_msgs.msg.PoseStamped()
+        pose.header.stamp = rospy.Time.now()
+        pose.header.frame_id = "grasp_i_0"
+        pose.pose.position.x = 0
+        pose.pose.position.y = 0
+        pose.pose.position.z = 0
+        trans = self.tfBuffer.lookup_transform('map', 'grasp_i_0', rospy.Time())
+        pose_transformed = tf2_geometry_msgs.do_transform_pose(pose, trans)
+        pub = rospy.Publisher('new_desired_grasp', geometry_msgs.msg.PoseStamped, queue_size=10)
+        #while True:
+        #    pub.publish(pose_transformed)
+        return pose_transformed
+
+    def execute_2DOF_grasp(self, grasp_center, depth_m, grasp_angle_dexnet, d_img):
         grasp_angle_hsr = self.transform_dexnet_angle(grasp_angle_dexnet)
+        dir_vec = [0, 1]
+        gsp = [grasp_center[1], grasp_center[0]]
+        self.img_coords2pose(gsp, dir_vec, d_img)
         self.go_to_start_pose(grasp_angle_hsr)
         actual_grasp_center = self.compute_actual_grasp_center()
-        desired_grasp_center = self.transform_head_rgbd_sensor_pixel_to_map(grasp_center, depth_m)
-        print('desired')
-        print(desired_grasp_center.pose.position)
-        print('actual')
-        print(actual_grasp_center.pose.position)
-        while desired_grasp_center.pose.position.x - actual_grasp_center.pose.position.x >= 0.01 or desired_grasp_center.pose.position.y - actual_grasp_center.pose.position.y >= 0.01:
+        desired_grasp_center = self.get_desired_grasp_in_map_frame()
+        print('difference between them')
+        print([desired_grasp_center.pose.position.x - actual_grasp_center.pose.position.x, desired_grasp_center.pose.position.y - actual_grasp_center.pose.position.y])
+        while abs(desired_grasp_center.pose.position.x - actual_grasp_center.pose.position.x) >= 0.01 or abs(desired_grasp_center.pose.position.y - actual_grasp_center.pose.position.y) >= 0.01:
             self.adjust_grasp_center(desired_grasp_center, actual_grasp_center)
             actual_grasp_center = self.compute_actual_grasp_center()
         if depth_m > 0.91:
             z = 0
         else:
             z = 0.91 - depth_m
+        print('z value')
+        print(z)
         self.robot.whole_body.move_to_joint_positions({'arm_lift_joint': z})
         #time.sleep(1)
-        #self.robot.close_gripper()
+        self.robot.close_gripper()
         #time.sleep(1)
-        #self.robot.whole_body.move_to_joint_positions({'arm_lift_joint': z + 0.2})
+        self.robot.whole_body.move_to_joint_positions({'arm_lift_joint': z + 0.2})
 
 
     def l_singulate(self, cm, dir_vec, d_img):
