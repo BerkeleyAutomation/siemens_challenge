@@ -70,9 +70,9 @@ class DeclutterDemo():
         self.robot = Robot_Interface()
         self.ra = Robot_Actions(self.robot)
 
-        model_path = 'main/model/sim_then_real_on_real_4objects/output_inference_graph.pb'
-        label_map_path = 'main/model/sim_then_real_on_real_4objects/object-detection.pbtxt'
-        self.det = Detector(model_path, label_map_path)
+        #model_path = 'main/model/sim_then_real_on_real_4objects/output_inference_graph.pb'
+        #label_map_path = 'main/model/sim_then_real_on_real_4objects/object-detection.pbtxt'
+        #self.det = Detector(model_path, label_map_path)
 
         self.viz = viz
 
@@ -81,13 +81,9 @@ class DeclutterDemo():
     def run_grasp_gqcnn(self, c_img, d_img):
         import json
         import os
-        import time
-        import glob
 
-        import numpy as np
 
         from PIL import Image
-        import matplotlib.pyplot as plt
 
         from autolab_core import RigidTransform, YamlConfig, Logger
         from perception import BinaryImage, CameraIntrinsics, ColorImage, DepthImage, RgbdImage
@@ -224,9 +220,29 @@ class DeclutterDemo():
         grasp_angle = action.grasp.angle
         grasp_depth_m = action.grasp.depth
         # ignore corrupted depth images
-        if grasp_depth_m < 0.8:
+        if 0.8 < grasp_depth_m < 1.05:
+            pass
+        else:
             print('invalid depth image')
             return
+
+        rgb_img = np.asarray(c_img)
+        color_im = ColorImage(rgb_img,
+                                frame=camera_intr.frame, encoding='rgb8')
+        color_im = color_im.rgb2bgr()
+
+        TARGET_DIR = '/home/benno/experiments/hsr/gqcnn/10_15_elevation_v1/'
+        if not os.path.exists(TARGET_DIR):
+            os.makedirs(TARGET_DIR)
+
+        #files_in_TARGET_DIR = os.listdir(TARGET_DIR)
+        files_in_TARGET_DIR = [os.path.join(TARGET_DIR, filename) for filename in os.listdir(TARGET_DIR)]
+        if not files_in_TARGET_DIR:
+            new_file_number = 0
+        else:
+            last_added_file = max(files_in_TARGET_DIR, key=os.path.getmtime)
+            last_file_number = last_added_file[-7:-4]
+            new_file_number = int(last_file_number) + 1
 
         # vis final grasp
         if policy_config['vis']['final_grasp']:
@@ -237,28 +253,66 @@ class DeclutterDemo():
                        vmax=policy_config['vis']['vmax'])
             vis.grasp(action.grasp, scale=2.5, show_center=False, show_axis=True)
             vis.title('Planned grasp at depth {0:.3f}m with Q={1:.3f}'.format(action.grasp.depth, action.q_value))
-            #vis.subplot(1,2,2)
-            #vis.imshow(rgbd_im.color)
-            #vis.grasp(action.grasp, scale=2.5, show_center=False, show_axis=True)
-            #vis.title('Planned grasp at depth {0:.3f}m with Q={1:.3f}'.format(action.grasp.depth, action.q_value))
+            vis.subplot(1,2,2)
+            vis.imshow(color_im)
+            vis.grasp(action.grasp, scale=2.5, show_center=False, show_axis=True)
+            vis.title('Planned grasp at depth {0:.3f}m with Q={1:.3f}'.format(action.grasp.depth, action.q_value))
+            vis.savefig(TARGET_DIR + 'final_grasp_' + str(new_file_number).zfill(3))
             vis.show()
+
+        grasp_width = self.compute_grasp_width(grasp_center, grasp_angle, grasp_depth_m, d_img)
 
         # execute planned grasp with hsr interface
         #self.execute_gqcnn(grasp_center, grasp_angle, d_img*1000)
 
         # execute 2DOF grasp
-        self.execute_gqcnn_2DOF(grasp_center, grasp_depth_m, grasp_angle, d_img*1000)
+        self.execute_gqcnn_2DOF(grasp_center, grasp_depth_m, grasp_angle, grasp_width, d_img*1000)
 
         # show grasp in rviz
         #self.ra.show_grasp_in_rviz(grasp_center, grasp_depth_m, grasp_angle, d_img*1000)
+
+    def compute_grasp_width(self, grasp_center, grasp_angle, grasp_depth_m, d_img):
+        print('grasp_depth_m %f' %(grasp_depth_m))
+        rot_angle = grasp_angle/np.pi*180
+        center = (grasp_center[0], grasp_center[1])
+        M = cv2.getRotationMatrix2D(center, rot_angle, 1)
+        d_img_rotated = cv2.warpAffine(d_img, M, (480,640))
+        #d_img_rotated[int(grasp_center[1]):int(grasp_center[1])+5, int(grasp_center[0])-60:int(grasp_center[0])+60] = 0
+        x1 = 0
+        x2 = 0
+        object_border_found = False
+        while x1 < 60 and not object_border_found:
+            if d_img_rotated[int(grasp_center[1]), int(grasp_center[0])-60+x1] < grasp_depth_m and d_img_rotated[int(grasp_center[1]), int(grasp_center[0])-60+x1-1] > grasp_depth_m and not d_img_rotated[int(grasp_center[1]), int(grasp_center[0])-60+x1] == 0:
+                object_border_found = True
+                print('found')
+            x1 += 1
+            print('x1: %f and depth: %f' %(x1, d_img_rotated[int(grasp_center[1]), int(grasp_center[0])-60+x1]))
+        object_border_found = False
+        while x2 < 60 and not object_border_found:
+            if d_img_rotated[int(grasp_center[1]), int(grasp_center[0])+60-x2] < grasp_depth_m and d_img_rotated[int(grasp_center[1]), int(grasp_center[0])+60-x2+1] > grasp_depth_m and not d_img_rotated[int(grasp_center[1]), int(grasp_center[0])+60-x2] == 0:
+                object_border_found = True
+                print('found')
+            x2 += 1
+            print('x2: %f and depth: %f' %(x2, d_img_rotated[int(grasp_center[1]), int(grasp_center[0])+60-x2]))
+        #d_img_rotated[int(grasp_center[1]):int(grasp_center[1])+2, int(grasp_center[0])-60+x1:int(grasp_center[0])] = 0
+        #d_img_rotated[int(grasp_center[1]):int(grasp_center[1])+2, int(grasp_center[0]):int(grasp_center[0]+60-x2)] = 0
+        #plt.figure(2)
+        #plt.subplot(1,2,1)
+        #plt.imshow(d_img)
+        #plt.subplot(1,2,2)
+        #plt.imshow(d_img_rotated)
+        #plt.show()
+        grasp_width = (60-x1 + 60 - x2)* 0.0018
+        return grasp_width
+
 
     def execute_gqcnn(self, grasp_center, grasp_angle, depth_image_mm):
         grasp_direction = np.array([math.sin(grasp_angle), math.cos(grasp_angle)])
         grasp_direction_normalized = grasp_direction / np.linalg.norm(grasp_direction)
         self.ra.execute_grasp(grasp_center, grasp_direction_normalized, depth_image_mm, 0, 500.0)
 
-    def execute_gqcnn_2DOF(self, grasp_center, depth_m, grasp_angle, d_img):
-        self.ra.execute_2DOF_grasp(grasp_center, depth_m, grasp_angle, d_img)
+    def execute_gqcnn_2DOF(self, grasp_center, depth_m, grasp_angle, grasp_width, d_img):
+        self.ra.execute_2DOF_grasp(grasp_center, depth_m, grasp_angle, grasp_width, d_img)
 
 
     def run_grasp(self, bbox, c_img, col_img, workspace_img, d_img):
@@ -377,25 +431,16 @@ class DeclutterDemo():
                         to_grasp.append((in_group, lego_class_num, color_name))
         return to_grasp, to_singulate
 
-    def go_to_start_pose(self):
-        self.robot.whole_body.move_to_joint_positions({'arm_flex_joint': -0.005953039901891888,
-                                        'arm_lift_joint': 3.5673664703075522e-06,
-                                        'arm_roll_joint': -1.6400026753088877,
-                                        'head_pan_joint': 0.24998440577459347,
-                                        'head_tilt_joint': -1.3270548266651048,
-                                        'wrist_flex_joint': -1.570003402348724,
-                                        'wrist_roll_joint': 0})
-
-
     def lego_demo(self):
-        self.go_to_start_pose()
+        self.ra.go_to_start_pose()
         c_img, d_img = self.robot.get_img_data()
         while (c_img is None or d_img is None):
             c_img, d_img = self.robot.get_img_data()
+
         # convert depth image from mm to m because dexnet uses m
         depth_image_mm = np.asarray(d_img[:,:])
         depth_image_m = depth_image_mm/1000
-        
+
         self.run_grasp_gqcnn(c_img, depth_image_m)
     
     def lego_demo_old(self):

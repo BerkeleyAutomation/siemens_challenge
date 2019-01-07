@@ -8,6 +8,7 @@ import rospy
 import tf2_ros
 import geometry_msgs.msg
 import tf2_geometry_msgs
+import thread
 
 class Robot_Actions():
     """
@@ -355,17 +356,29 @@ class Robot_Actions():
     def adjust_grasp_center(self, desired_grasp_center, actual_grasp_center):
         difference_x = desired_grasp_center.pose.position.x - actual_grasp_center.pose.position.x
         difference_y = desired_grasp_center.pose.position.y - actual_grasp_center.pose.position.y
-        self.robot.omni_base.go_rel(difference_x, difference_y, 0.0, 0)
-        print('new difference between them')
-        print([abs(difference_x), abs(difference_y)])
+        base_position_map_frame = self.robot.omni_base.get_pose()
+        self.robot.omni_base.go_abs(base_position_map_frame.pos.x + difference_x, base_position_map_frame.pos.y + difference_y, base_position_map_frame.ori.z, 0)
+        base_position_map_frame = self.robot.omni_base.get_pose()
 
-    def go_to_start_pose(self, grasp_angle_hsr):
+    def go_to_start_pose(self):
+        self.robot.whole_body.move_to_joint_positions({'arm_flex_joint': -0.005953039901891888,
+                                        'arm_lift_joint': 3.5673664703075522e-06,
+                                        'arm_roll_joint': -1.6400026753088877,
+                                        'head_pan_joint': 0.24998440577459347,
+                                        'head_tilt_joint': -1.3270548266651048,
+                                        'wrist_flex_joint': -1.570003402348724,
+                                        'wrist_roll_joint': 0})
+        return
+
+    def go_to_grasp_pose(self, grasp_angle_hsr):
         self.robot.open_gripper()
         self.robot.whole_body.move_to_joint_positions({'arm_roll_joint': 0.0,
                                         'arm_lift_joint': 0.1,
-                                        'arm_flex_joint': -1.83,
-                                        'wrist_flex_joint': -1.31,
+                                        'arm_flex_joint': -1.89,
+                                        'wrist_flex_joint': -np.pi+1.89,
                                         'wrist_roll_joint': grasp_angle_hsr})
+        time.sleep(1)
+        return
 
     def show_grasp_in_rviz(self, grasp_center, depth_m, grasp_angle_dexnet, d_img):
         desired_grasp_center = self.get_desired_grasp_in_map_frame()
@@ -387,29 +400,72 @@ class Robot_Actions():
         #    pub.publish(pose_transformed)
         return pose_transformed
 
-    def execute_2DOF_grasp(self, grasp_center, depth_m, grasp_angle_dexnet, d_img):
+    def compute_z_value(self, grasp_center, grasp_depth_m):
+        distance_img_center = 240 - grasp_center[1]
+        print('distance_img_center %f' %(distance_img_center))
+        floor_depth_img_center = 0.942
+        depth_change_per_90_pixels = 0.042
+        floor_depth_at_grasp = floor_depth_img_center + distance_img_center / 90 * depth_change_per_90_pixels
+        print('floor_depth_at_grasp %f' %(floor_depth_at_grasp))
+        height_at_z_0 = 0.007
+        if grasp_depth_m > floor_depth_at_grasp:
+            z = 0
+        else:
+            z = floor_depth_at_grasp - grasp_depth_m
+            z = math.cos(13.97 / 180 * np.pi) * z
+            z -= height_at_z_0
+        if z < 0:
+            z = 0
+        print('z value %f' %(z))
+        return z
+
+    def adjust_z_based_on_grasp_width(self, z, grasp_width):
+        if grasp_width <= 0.07:
+            z += 0.01
+        elif grasp_width <= 0.1:
+            z += 0.02*math.pow(0.81, grasp_width*100 - 5)
+        print('new z value %f' %(z))
+        return z
+
+    def show_grasps(self, actual_grasp_center, desired_grasp_center):
+        des_pub = rospy.Publisher('desired_grasp_center', geometry_msgs.msg.PoseStamped, queue_size=10)
+        act_pub = rospy.Publisher('actual_grasp_center', geometry_msgs.msg.PoseStamped, queue_size=10)
+        while True:
+            des_pub.publish(desired_grasp_center)
+            act_pub.publish(actual_grasp_center)
+
+
+    def execute_2DOF_grasp(self, grasp_center, grasp_depth_m, grasp_angle_dexnet, grasp_width, d_img):
         grasp_angle_hsr = self.transform_dexnet_angle(grasp_angle_dexnet)
         dir_vec = [0, 1]
         gsp = [grasp_center[1], grasp_center[0]]
+        print('grasp centers')
+        print(grasp_center)
+        print(gsp)
         self.img_coords2pose(gsp, dir_vec, d_img)
-        self.go_to_start_pose(grasp_angle_hsr)
+        self.go_to_grasp_pose(grasp_angle_hsr)
+        time.sleep(1)
         actual_grasp_center = self.compute_actual_grasp_center()
         desired_grasp_center = self.get_desired_grasp_in_map_frame()
-        print('difference between them')
+
+        thread.start_new_thread(self.show_grasps,(actual_grasp_center,desired_grasp_center))
+        time.sleep(3)
+        print('initial difference between grasps')
         print([desired_grasp_center.pose.position.x - actual_grasp_center.pose.position.x, desired_grasp_center.pose.position.y - actual_grasp_center.pose.position.y])
-        while abs(desired_grasp_center.pose.position.x - actual_grasp_center.pose.position.x) >= 0.01 or abs(desired_grasp_center.pose.position.y - actual_grasp_center.pose.position.y) >= 0.01:
-            self.adjust_grasp_center(desired_grasp_center, actual_grasp_center)
-            actual_grasp_center = self.compute_actual_grasp_center()
-        if depth_m > 0.91:
-            z = 0
-        else:
-            z = 0.91 - depth_m
-        print('z value')
-        print(z)
+        self.adjust_grasp_center(desired_grasp_center, actual_grasp_center)
+        time.sleep(1)
+        actual_grasp_center = self.compute_actual_grasp_center()
+        print('new difference between grasps')
+        print([desired_grasp_center.pose.position.x - actual_grasp_center.pose.position.x, desired_grasp_center.pose.position.y - actual_grasp_center.pose.position.y])
+
+        z = self.compute_z_value(grasp_center, grasp_depth_m)
         self.robot.whole_body.move_to_joint_positions({'arm_lift_joint': z})
-        #time.sleep(1)
+        z = self.adjust_z_based_on_grasp_width(z, grasp_width)
+        #time.sleep(5)
+        self.robot.whole_body.move_to_joint_positions({'arm_lift_joint': z})
+        #time.sleep(5)
         self.robot.close_gripper()
-        #time.sleep(1)
+        #time.sleep(5)
         self.robot.whole_body.move_to_joint_positions({'arm_lift_joint': z + 0.2})
 
 
