@@ -144,6 +144,7 @@ class DeclutterDemo():
             
         # read images
         depth_data = d_img
+
         # crop image to make gqcnn focus on target zone of HSR
         # desired cropped image: depth_data[190:330, 60:170]
         depth_data[:, :245] = 0
@@ -433,6 +434,7 @@ class DeclutterDemo():
 
     def lego_demo(self):
         self.ra.go_to_start_pose()
+        time.sleep(0.5)
         c_img, d_img = self.robot.get_img_data()
         while (c_img is None or d_img is None):
             c_img, d_img = self.robot.get_img_data()
