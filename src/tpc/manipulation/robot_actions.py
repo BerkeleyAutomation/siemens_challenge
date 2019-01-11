@@ -414,14 +414,6 @@ class Robot_Actions():
         print('z value %f' %(z))
         return z
 
-    #def adjust_z_based_on_grasp_width(self, z, grasp_width):
-    #    if grasp_width <= 0.07:
-    #        z += 0.01
-    #    elif grasp_width <= 0.1:
-    #        z += 0.02*math.pow(0.81, grasp_width*100 - 5)
-    #    print('new z value %f' %(z))
-    #    return z
-
     def adjust_z_based_on_grasp_width(self, z, grasp_width):
         if grasp_width <= 0.02:
             adjustment = 0.016 + 0.004 * (0.02 - grasp_width) / 0.02
@@ -442,11 +434,8 @@ class Robot_Actions():
 
     def execute_2DOF_grasp(self, grasp_center, grasp_depth_m, grasp_angle_dexnet, grasp_width, d_img):
         grasp_angle_hsr = self.transform_dexnet_angle(grasp_angle_dexnet)
+        # use dummy direction because this function needs one as argument
         dir_vec = [0, 1]
-        gsp = [grasp_center[1], grasp_center[0]]
-        print('grasp centers')
-        print(grasp_center)
-        print(gsp)
         # img_coords2pose exchanges x and y of grasp center, thus having to give them exchanged
         self.img_coords2pose([grasp_center[1], grasp_center[0]], dir_vec, d_img)
         desired_grasp_center = self.get_desired_grasp_in_map_frame()
