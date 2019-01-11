@@ -458,7 +458,7 @@ class Robot_Actions():
         #time.sleep(5)
         self.robot.close_gripper()
         #time.sleep(5)
-        #self.robot.whole_body.move_to_joint_positions({'arm_lift_joint': z + 0.2})
+        self.robot.whole_body.move_to_joint_positions({'arm_lift_joint': z + 0.2})
 
 
     def l_singulate(self, cm, dir_vec, d_img):
