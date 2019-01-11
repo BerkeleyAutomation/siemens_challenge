@@ -399,8 +399,8 @@ class Robot_Actions():
         depth_change_per_90_pixels = 0.042
         floor_depth_at_grasp = floor_depth_img_center + distance_img_center / 90 * depth_change_per_90_pixels
         print('floor_depth_at_grasp %f' %(floor_depth_at_grasp))
-        height_at_z_0 = 0.007
-        gripper_height = 0.007
+        height_at_z_0 = 0.004
+        gripper_height = 0.008
         elevation_angle_in_degrees = 13.97
         if grasp_depth_m > floor_depth_at_grasp:
             z = 0
@@ -458,7 +458,7 @@ class Robot_Actions():
         #time.sleep(5)
         self.robot.close_gripper()
         #time.sleep(5)
-        self.robot.whole_body.move_to_joint_positions({'arm_lift_joint': z + 0.2})
+        #self.robot.whole_body.move_to_joint_positions({'arm_lift_joint': z + 0.2})
 
 
     def l_singulate(self, cm, dir_vec, d_img):
