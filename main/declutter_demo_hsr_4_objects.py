@@ -258,7 +258,7 @@ class DeclutterDemo():
             vis.imshow(color_im)
             vis.grasp(action.grasp, scale=2.5, show_center=False, show_axis=True)
             vis.title('Planned grasp at depth {0:.3f}m with Q={1:.3f}'.format(action.grasp.depth, action.q_value))
-            vis.savefig(TARGET_DIR + 'final_grasp_' + str(new_file_number).zfill(3))
+            #vis.savefig(TARGET_DIR + 'final_grasp_' + str(new_file_number).zfill(3))
             vis.show()
 
         grasp_width = self.compute_grasp_width(grasp_center, grasp_angle, grasp_depth_m, d_img)
@@ -269,8 +269,6 @@ class DeclutterDemo():
         # execute 2DOF grasp
         self.execute_gqcnn_2DOF(grasp_center, grasp_depth_m, grasp_angle, grasp_width, d_img*1000)
 
-        # show grasp in rviz
-        #self.ra.show_grasp_in_rviz(grasp_center, grasp_depth_m, grasp_angle, d_img*1000)
 
     def compute_grasp_width(self, grasp_center, grasp_angle, grasp_depth_m, d_img):
         print('grasp_depth_m %f' %(grasp_depth_m))
@@ -434,7 +432,7 @@ class DeclutterDemo():
 
     def lego_demo(self):
         self.ra.go_to_start_pose()
-        time.sleep(0.5)
+        time.sleep(1)
         c_img, d_img = self.robot.get_img_data()
         while (c_img is None or d_img is None):
             c_img, d_img = self.robot.get_img_data()
@@ -452,14 +450,6 @@ class DeclutterDemo():
 
         # if true, use hard-coded deposit without AR markers
         hard_code = True
-
-        #self.robot.whole_body.move_to_joint_positions({'arm_flex_joint': -0.005953039901891888,
-        #                                'arm_lift_joint': 3.5673664703075522e-06,
-        #                                'arm_roll_joint': -1.6400026753088877,
-        #                                'head_pan_joint': 0.24998440577459347,
-        #                                'head_tilt_joint': -1.3270548266651048,
-        #                                'wrist_flex_joint': -1.570003402348724,
-        #                                'wrist_roll_joint': 0})
 
         # setup robot in front-facing start pose to take image of legos
         #self.ra.go_to_start_pose()

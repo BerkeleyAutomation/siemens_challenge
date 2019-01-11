@@ -372,19 +372,13 @@ class Robot_Actions():
 
     def go_to_grasp_pose(self, grasp_angle_hsr):
         self.robot.open_gripper()
-        self.robot.whole_body.move_to_joint_positions({'arm_roll_joint': 0.0,
+        self.robot.whole_body.move_to_joint_positions({'arm_roll_joint': -0.04,
                                         'arm_lift_joint': 0.15,
-                                        'arm_flex_joint': -1.89,
-                                        'wrist_flex_joint': -np.pi+1.89,
+                                        'arm_flex_joint': -1.91,
+                                        'wrist_flex_joint': -1.18,
                                         'wrist_roll_joint': grasp_angle_hsr})
         time.sleep(1)
         return
-
-    def show_grasp_in_rviz(self, grasp_center, depth_m, grasp_angle_dexnet, d_img):
-        desired_grasp_center = self.get_desired_grasp_in_map_frame()
-        trans_pub = rospy.Publisher('desired_grasp_center', geometry_msgs.msg.PoseStamped, queue_size=10)
-        while True:
-            trans_pub.publish(desired_grasp_center)
 
     def get_desired_grasp_in_map_frame(self):
         pose = geometry_msgs.msg.PoseStamped()
@@ -396,8 +390,6 @@ class Robot_Actions():
         trans = self.tfBuffer.lookup_transform('map', 'grasp_i_0', rospy.Time())
         pose_transformed = tf2_geometry_msgs.do_transform_pose(pose, trans)
         pub = rospy.Publisher('new_desired_grasp', geometry_msgs.msg.PoseStamped, queue_size=10)
-        #while True:
-        #    pub.publish(pose_transformed)
         return pose_transformed
 
     def compute_z_value(self, grasp_center, grasp_depth_m):
@@ -408,12 +400,13 @@ class Robot_Actions():
         floor_depth_at_grasp = floor_depth_img_center + distance_img_center / 90 * depth_change_per_90_pixels
         print('floor_depth_at_grasp %f' %(floor_depth_at_grasp))
         height_at_z_0 = 0.007
-        gripper_height = 0.0065
+        gripper_height = 0.007
+        elevation_angle_in_degrees = 13.97
         if grasp_depth_m > floor_depth_at_grasp:
             z = 0
         else:
             z = floor_depth_at_grasp - grasp_depth_m
-            z = math.cos(13.97 / 180 * np.pi) * z
+            z = math.cos(elevation_angle_in_degrees / 180 * np.pi) * z
             z -= height_at_z_0
             z -= gripper_height
         if z < 0:
@@ -421,20 +414,30 @@ class Robot_Actions():
         print('z value %f' %(z))
         return z
 
+    #def adjust_z_based_on_grasp_width(self, z, grasp_width):
+    #    if grasp_width <= 0.07:
+    #        z += 0.01
+    #    elif grasp_width <= 0.1:
+    #        z += 0.02*math.pow(0.81, grasp_width*100 - 5)
+    #    print('new z value %f' %(z))
+    #    return z
+
     def adjust_z_based_on_grasp_width(self, z, grasp_width):
-        if grasp_width <= 0.07:
-            z += 0.01
-        elif grasp_width <= 0.1:
-            z += 0.02*math.pow(0.81, grasp_width*100 - 5)
-        print('new z value %f' %(z))
+        if grasp_width <= 0.02:
+            adjustment = 0.016 + 0.004 * (0.02 - grasp_width) / 0.02
+        elif 0.02 < grasp_width <= 0.09:
+            adjustment = 0.009 + 0.005 * (0.09 - grasp_width) / 0.07
+        elif 0.09 < grasp_width <= 0.11:
+            adjustment = 0.002 + 0.007 * (0.11 - grasp_width) / 0.02
+        else:
+            adjustment = 0.002
+        z += adjustment
         return z
 
-    def show_grasps(self, actual_grasp_center, desired_grasp_center):
-        des_pub = rospy.Publisher('desired_grasp_center', geometry_msgs.msg.PoseStamped, queue_size=10)
-        act_pub = rospy.Publisher('actual_grasp_center', geometry_msgs.msg.PoseStamped, queue_size=10)
+    def show_grasp(self, grasp, topic_name):
+        pub = rospy.Publisher(topic_name, geometry_msgs.msg.PoseStamped, queue_size=10)
         while True:
-            des_pub.publish(desired_grasp_center)
-            act_pub.publish(actual_grasp_center)
+            pub.publish(grasp)
 
 
     def execute_2DOF_grasp(self, grasp_center, grasp_depth_m, grasp_angle_dexnet, grasp_width, d_img):
@@ -444,13 +447,17 @@ class Robot_Actions():
         print('grasp centers')
         print(grasp_center)
         print(gsp)
-        self.img_coords2pose(gsp, dir_vec, d_img)
+        # img_coords2pose exchanges x and y of grasp center, thus having to give them exchanged
+        self.img_coords2pose([grasp_center[1], grasp_center[0]], dir_vec, d_img)
+        desired_grasp_center = self.get_desired_grasp_in_map_frame()
+        thread.start_new_thread(self.show_grasp,(desired_grasp_center,'desired_grasp_center'))
+        exit_var = raw_input()
+        #if exit_var == 'exit':
+        #    return
         self.go_to_grasp_pose(grasp_angle_hsr)
         time.sleep(1)
         actual_grasp_center = self.compute_actual_grasp_center()
-        desired_grasp_center = self.get_desired_grasp_in_map_frame()
-
-        #thread.start_new_thread(self.show_grasps,(actual_grasp_center,desired_grasp_center))
+        #thread.start_new_thread(self.show_grasp,(actual_grasp_center,'actual_grasp_center'))
         print('initial difference between grasps')
         print([desired_grasp_center.pose.position.x - actual_grasp_center.pose.position.x, desired_grasp_center.pose.position.y - actual_grasp_center.pose.position.y])
         self.adjust_grasp_center(desired_grasp_center, actual_grasp_center)
