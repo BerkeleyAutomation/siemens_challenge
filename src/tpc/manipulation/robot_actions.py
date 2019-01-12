@@ -9,6 +9,7 @@ import tf2_ros
 import geometry_msgs.msg
 import tf2_geometry_msgs
 import thread
+import os
 
 class Robot_Actions():
     """
@@ -142,7 +143,7 @@ class Robot_Actions():
         """
         self.robot.set_start_position()
 
-    def img_coords2pose(self, cm, dir_vec, d_img, rot=None):
+    def img_coords2pose(self, cm, dir_vec, d_img, rot=None, depth=None):
         """
         convert image coordinates to a
         grasp pose
@@ -164,10 +165,14 @@ class Robot_Actions():
         name of the generated grasp pose
 
         """
-        z = self.robot.get_depth(cm, d_img)
+        if depth is not None:
+            z = depth
+        else:
+            z = self.robot.get_depth(cm, d_img)
+        print('dexnet depth %f' %(z))
+        print('robot depth %f' %(self.robot.get_depth(cm, d_img)))
         if rot is None:
             rot = self.robot.get_rot(dir_vec)
-
         pose_name = self.robot.create_grasp_pose(cm[1], cm[0], z, rot)
         # time.sleep(2)
         time.sleep(0.1)
@@ -368,7 +373,6 @@ class Robot_Actions():
                                         'head_tilt_joint': -1.3270548266651048,
                                         'wrist_flex_joint': -1.570003402348724,
                                         'wrist_roll_joint': 0})
-        return
 
     def go_to_grasp_pose(self, grasp_angle_hsr):
         self.robot.open_gripper()
@@ -378,7 +382,6 @@ class Robot_Actions():
                                         'wrist_flex_joint': -1.18,
                                         'wrist_roll_joint': grasp_angle_hsr})
         time.sleep(1)
-        return
 
     def get_desired_grasp_in_map_frame(self):
         pose = geometry_msgs.msg.PoseStamped()
@@ -392,12 +395,17 @@ class Robot_Actions():
         pub = rospy.Publisher('new_desired_grasp', geometry_msgs.msg.PoseStamped, queue_size=10)
         return pose_transformed
 
+    def get_floor_depth(self, grasp_center):
+        floor_depth_filename = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                                '..',
+                                                '..',
+                                                '..',
+                                                'data/floor_depth_white_mat.npy')
+        floor_depth_array = np.load(floor_depth_filename)
+        return floor_depth_array[int(grasp_center[1]),int(grasp_center[0])]
+
     def compute_z_value(self, grasp_center, grasp_depth_m):
-        distance_img_center = 240 - grasp_center[1]
-        print('distance_img_center %f' %(distance_img_center))
-        floor_depth_img_center = 0.942
-        depth_change_per_90_pixels = 0.042
-        floor_depth_at_grasp = floor_depth_img_center + distance_img_center / 90 * depth_change_per_90_pixels
+        floor_depth_at_grasp = self.get_floor_depth(grasp_center)
         print('floor_depth_at_grasp %f' %(floor_depth_at_grasp))
         height_at_z_0 = 0.004
         gripper_height = 0.008
@@ -426,23 +434,17 @@ class Robot_Actions():
         z += adjustment
         return z
 
-    def show_grasp(self, grasp, topic_name):
-        pub = rospy.Publisher(topic_name, geometry_msgs.msg.PoseStamped, queue_size=10)
-        while True:
-            pub.publish(grasp)
-
-
     def execute_2DOF_grasp(self, grasp_center, grasp_depth_m, grasp_angle_dexnet, grasp_width, d_img):
         grasp_angle_hsr = self.transform_dexnet_angle(grasp_angle_dexnet)
         # use dummy direction because this function needs one as argument
         dir_vec = [0, 1]
+        print(grasp_center)
         # img_coords2pose exchanges x and y of grasp center, thus having to give them exchanged
-        self.img_coords2pose([grasp_center[1], grasp_center[0]], dir_vec, d_img)
+        self.img_coords2pose([grasp_center[1], grasp_center[0]], dir_vec, d_img, depth=grasp_depth_m*1000)
         desired_grasp_center = self.get_desired_grasp_in_map_frame()
-        thread.start_new_thread(self.show_grasp,(desired_grasp_center,'desired_grasp_center'))
         exit_var = raw_input()
-        #if exit_var == 'exit':
-        #    return
+        if exit_var == 'exit':
+            return
         self.go_to_grasp_pose(grasp_angle_hsr)
         time.sleep(1)
         actual_grasp_center = self.compute_actual_grasp_center()

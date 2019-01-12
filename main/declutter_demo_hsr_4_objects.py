@@ -214,9 +214,11 @@ class DeclutterDemo():
             else:
                 raise ValueError('Invalid policy type: {}'.format(policy_type))
 
+        
         # query policy
         policy_start = time.time()
         action = policy(state)
+        # grasp_center[x,y] in image frame
         grasp_center = [action.grasp.center[0], action.grasp.center[1]]
         grasp_angle = action.grasp.angle
         grasp_depth_m = action.grasp.depth
