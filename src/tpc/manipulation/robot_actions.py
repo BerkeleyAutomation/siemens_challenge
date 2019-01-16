@@ -169,8 +169,6 @@ class Robot_Actions():
             z = depth
         else:
             z = self.robot.get_depth(cm, d_img)
-        print('dexnet depth %f' %(z))
-        print('robot depth %f' %(self.robot.get_depth(cm, d_img)))
         if rot is None:
             rot = self.robot.get_rot(dir_vec)
         pose_name = self.robot.create_grasp_pose(cm[1], cm[0], z, rot)
@@ -333,7 +331,7 @@ class Robot_Actions():
         if lin_weight is not None:
             self.robot.linear_weight = lin_weight
         pose_name = self.img_coords2pose(cm, dir_vec, d_img)
-        #self.grasp_at_pose(pose_name)
+        self.grasp_at_pose(pose_name)
         #self.deposit_obj(class_num)
         #self.deposit_obj_fake_ar(class_num % 4)
 

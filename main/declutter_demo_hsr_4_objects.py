@@ -9,6 +9,7 @@ import sys
 import thread
 import tf
 import math
+import os
 
 import importlib
 import matplotlib.pyplot as plt
@@ -70,9 +71,9 @@ class DeclutterDemo():
         self.robot = Robot_Interface()
         self.ra = Robot_Actions(self.robot)
 
-        #model_path = 'main/model/sim_then_real_on_real_4objects/output_inference_graph.pb'
-        #label_map_path = 'main/model/sim_then_real_on_real_4objects/object-detection.pbtxt'
-        #self.det = Detector(model_path, label_map_path)
+        model_path = 'main/model/sim_then_real_on_real_4objects/output_inference_graph.pb'
+        label_map_path = 'main/model/sim_then_real_on_real_4objects/object-detection.pbtxt'
+        self.det = Detector(model_path, label_map_path)
 
         self.viz = viz
 
@@ -143,14 +144,9 @@ class DeclutterDemo():
         camera_intr = CameraIntrinsics.load(camera_intr_filename)
             
         # read images
-        depth_data = d_img
+        depth_data = self.focus_on_target_zone(d_img)
 
-        # crop image to make gqcnn focus on target zone of HSR
-        # desired cropped image: depth_data[190:330, 60:170]
-        depth_data[:, :245] = 0
-        depth_data[:, 420:] = 0
-        depth_data[:150, :] = 0
-        depth_data[310:, :] = 0
+
         depth_im = DepthImage(depth_data, frame=camera_intr.frame)
         rgb_img = c_img
         #rgb_img_np = np.array(rgb_img).astype(np.uint8)
@@ -234,7 +230,7 @@ class DeclutterDemo():
                                 frame=camera_intr.frame, encoding='rgb8')
         color_im = color_im.rgb2bgr()
 
-        TARGET_DIR = '/home/benno/experiments/hsr/gqcnn/10_15_elevation_v1/'
+        TARGET_DIR = '/home/benno/experiments/hsr/gqcnn/10_15_elevation_v2/'
         if not os.path.exists(TARGET_DIR):
             os.makedirs(TARGET_DIR)
 
@@ -265,19 +261,64 @@ class DeclutterDemo():
 
         grasp_width = self.compute_grasp_width(grasp_center, grasp_angle, grasp_depth_m, d_img)
 
+
+        self.get_height_line(grasp_center, grasp_angle, d_img)
+
         # execute planned grasp with hsr interface
         #self.execute_gqcnn(grasp_center, grasp_angle, d_img*1000)
 
         # execute 2DOF grasp
-        self.execute_gqcnn_2DOF(grasp_center, grasp_depth_m, grasp_angle, grasp_width, d_img*1000)
+        #self.execute_gqcnn_2DOF(grasp_center, grasp_depth_m, grasp_angle, grasp_width, d_img*1000)
 
+    def focus_on_target_zone(self, d_img):
+        d_img[:, :245] = 0
+        d_img[:, 420:] = 0
+        d_img[:150, :] = 0
+        d_img[310:, :] = 0
+        return d_img
 
-    def compute_grasp_width(self, grasp_center, grasp_angle, grasp_depth_m, d_img):
-        print('grasp_depth_m %f' %(grasp_depth_m))
+    def align_grasp_direction_with_axes(self, grasp_center, grasp_angle, d_img):
         rot_angle = grasp_angle/np.pi*180
         center = (grasp_center[0], grasp_center[1])
         M = cv2.getRotationMatrix2D(center, rot_angle, 1)
         d_img_rotated = cv2.warpAffine(d_img, M, (480,640))
+        return d_img_rotated
+
+    def get_height_line(self, grasp_center, grasp_angle, d_img):
+        floor_depth_img = self.get_floor_depth_img()
+        floor_depth_img_crop = self.focus_on_target_zone(floor_depth_img)
+        floor_depth_img_rotated = self.align_grasp_direction_with_axes(grasp_center, grasp_angle, floor_depth_img_crop)
+        d_img_rotated = self.align_grasp_direction_with_axes(grasp_center, grasp_angle, d_img)
+        height_image = d_img_rotated - floor_depth_img_rotated
+        height_image_mirrored = height_image * (-1)
+        height_image_mirrored[height_image_mirrored<0] = 0
+        height_image_gradient = np.gradient(height_image_mirrored[int(grasp_center[1]), :])
+        plt.figure()
+        plt.subplot(1,3,1)
+        plt.title('Input')
+        plt.plot(d_img_rotated[int(grasp_center[1]), :])
+        plt.subplot(1,3,2)
+        plt.title('Height')
+        plt.plot(height_image_mirrored[int(grasp_center[1]), :])
+        plt.subplot(1,3,3)
+        plt.title('Gradient')
+        plt.plot(height_image_gradient)
+        plt.show()
+
+    def get_floor_depth_img(self):
+        floor_depth_filename = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                                '..',
+                                                'data/floor_depth_white_mat.npy')
+        floor_depth_array = np.load(floor_depth_filename)
+        return floor_depth_array
+
+    def get_floor_depth(self, grasp_center):
+        floor_depth_array = self.get_floor_depth_img
+        return floor_depth_array[int(grasp_center[1]),int(grasp_center[0])]
+
+    def compute_grasp_width(self, grasp_center, grasp_angle, grasp_depth_m, d_img):
+        print('grasp_depth_m %f' %(grasp_depth_m))
+        d_img_rotated = self.align_grasp_direction_with_axes(grasp_center, grasp_angle, d_img)
         #d_img_rotated[int(grasp_center[1]):int(grasp_center[1])+5, int(grasp_center[0])-60:int(grasp_center[0])+60] = 0
         x1 = 0
         x2 = 0
@@ -296,7 +337,7 @@ class DeclutterDemo():
             x2 += 1
             print('x2: %f and depth: %f' %(x2, d_img_rotated[int(grasp_center[1]), int(grasp_center[0])+60-x2]))
         #d_img_rotated[int(grasp_center[1]):int(grasp_center[1])+2, int(grasp_center[0])-60+x1:int(grasp_center[0])] = 0
-        #d_img_rotated[int(grasp_center[1]):int(grasp_center[1])+2, int(grasp_center[0]):int(grasp_center[0]+60-x2)] = 0
+        d_img_rotated[int(grasp_center[1]):int(grasp_center[1])+2, int(grasp_center[0]):int(grasp_center[0]+60-x2)] = 0
         #plt.figure(2)
         #plt.subplot(1,2,1)
         #plt.imshow(d_img)
@@ -338,9 +379,6 @@ class DeclutterDemo():
             group = bbox.to_group(c_img, col_img)
         except ValueError:
             return
-        print('grasp center pixels')
-        print(group.cm)
-        return
         # display_grasps(workspace_img, [group])
         self.ra.execute_grasp(group.cm, group.dir, d_img, bbox.label, 500.0)
 
@@ -456,7 +494,7 @@ class DeclutterDemo():
         # setup robot in front-facing start pose to take image of legos
         #self.ra.go_to_start_pose()
         #self.ra.set_start_position()
-        #self.ra.head_start_pose()
+        self.ra.head_start_pose()
         c_img, d_img = self.robot.get_img_data()
 
 
@@ -475,20 +513,20 @@ class DeclutterDemo():
 
                     # crop image and generate binary mask
                     # main_mask = crop_img(c_img, simple=True, arc=False, viz=self.viz, task='lego_demo')
-
+                    print('sdf')
                     # import ipdb; ipdb.set_trace()
                     main_mask = crop_img(c_img, simple=True, arc=False, viz=self.viz)
                     col_img = ColorImage(c_img)
                     workspace_img = col_img.mask_binary(main_mask)
 
                     # cv2.imwrite('debug_imgs/workspace_img.png', workspace_img.data)
-
+                    print('ff')
                     bboxes, vis_util_image = self.get_bboxes_from_net(c_img, sess=sess)
-
+                    print('sdf')
                     if len(bboxes) == 0:
                         print("Cleared the workspace")
                         print("Add more objects, then resume")
-                        import ipdb; ipdb.set_trace()
+                        #import ipdb; ipdb.set_trace()
                     else:
                         # box_viz = draw_boxes(bboxes, c_img)
                         # cv2.imwrite("debug_imgs/box.png", box_viz)
@@ -544,4 +582,4 @@ if __name__ == "__main__":
 
     task = DeclutterDemo(viz=True)
     # rospy.spin()
-    task.lego_demo()
+    task.lego_demo_old()
