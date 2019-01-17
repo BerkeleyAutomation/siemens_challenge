@@ -406,11 +406,9 @@ class Robot_Actions():
         gripper_height = 0.008
         z = desired_grasp_center.pose.position.z
         z -= floor_z_value_in_map_frame
-        z -= height_at_z_equals_0
         z -= gripper_height
         if z < 0:
             z = 0
-        print('z value %f' %(z))
         return z
 
     def adjust_z_based_on_grasp_width(self, z, grasp_width):
@@ -429,7 +427,6 @@ class Robot_Actions():
         grasp_angle_hsr = self.transform_dexnet_angle(grasp_angle_dexnet)
         # use dummy direction because this function needs one as argument
         dir_vec = [0, 1]
-        print(grasp_center)
         # img_coords2pose exchanges x and y of grasp center, thus having to give them exchanged
         self.img_coords2pose([grasp_center[1], grasp_center[0]], dir_vec, d_img, depth=grasp_depth_m*1000)
         desired_grasp_center = self.get_desired_grasp_in_map_frame()
@@ -439,9 +436,6 @@ class Robot_Actions():
         self.go_to_grasp_pose(grasp_angle_hsr)
         time.sleep(1)
         actual_grasp_center = self.compute_actual_grasp_center()
-        #thread.start_new_thread(self.show_grasp,(actual_grasp_center,'actual_grasp_center'))
-        print('initial difference between grasps')
-        print([desired_grasp_center.pose.position.x - actual_grasp_center.pose.position.x, desired_grasp_center.pose.position.y - actual_grasp_center.pose.position.y])
         self.adjust_grasp_center(desired_grasp_center, actual_grasp_center)
         z = self.compute_z_value(desired_grasp_center)
         self.robot.whole_body.move_to_joint_positions({'arm_lift_joint': z})

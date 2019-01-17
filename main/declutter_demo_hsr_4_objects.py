@@ -71,9 +71,9 @@ class DeclutterDemo():
         self.robot = Robot_Interface()
         self.ra = Robot_Actions(self.robot)
 
-        model_path = 'main/model/sim_then_real_on_real_4objects/output_inference_graph.pb'
-        label_map_path = 'main/model/sim_then_real_on_real_4objects/object-detection.pbtxt'
-        self.det = Detector(model_path, label_map_path)
+        #model_path = 'main/model/sim_then_real_on_real_4objects/output_inference_graph.pb'
+        #label_map_path = 'main/model/sim_then_real_on_real_4objects/object-detection.pbtxt'
+        #self.det = Detector(model_path, label_map_path)
 
         self.viz = viz
 
@@ -317,7 +317,6 @@ class DeclutterDemo():
         return floor_depth_array[int(grasp_center[1]),int(grasp_center[0])]
 
     def compute_grasp_width(self, grasp_center, grasp_angle, grasp_depth_m, d_img):
-        print('grasp_depth_m %f' %(grasp_depth_m))
         d_img_rotated = self.align_grasp_direction_with_axes(grasp_center, grasp_angle, d_img)
         #d_img_rotated[int(grasp_center[1]):int(grasp_center[1])+5, int(grasp_center[0])-60:int(grasp_center[0])+60] = 0
         x1 = 0
@@ -326,16 +325,12 @@ class DeclutterDemo():
         while x1 < 60 and not object_border_found:
             if d_img_rotated[int(grasp_center[1]), int(grasp_center[0])-60+x1] < grasp_depth_m and d_img_rotated[int(grasp_center[1]), int(grasp_center[0])-60+x1-1] > grasp_depth_m and not d_img_rotated[int(grasp_center[1]), int(grasp_center[0])-60+x1] == 0:
                 object_border_found = True
-                print('found')
             x1 += 1
-            print('x1: %f and depth: %f' %(x1, d_img_rotated[int(grasp_center[1]), int(grasp_center[0])-60+x1]))
         object_border_found = False
         while x2 < 60 and not object_border_found:
             if d_img_rotated[int(grasp_center[1]), int(grasp_center[0])+60-x2] < grasp_depth_m and d_img_rotated[int(grasp_center[1]), int(grasp_center[0])+60-x2+1] > grasp_depth_m and not d_img_rotated[int(grasp_center[1]), int(grasp_center[0])+60-x2] == 0:
                 object_border_found = True
-                print('found')
             x2 += 1
-            print('x2: %f and depth: %f' %(x2, d_img_rotated[int(grasp_center[1]), int(grasp_center[0])+60-x2]))
         #d_img_rotated[int(grasp_center[1]):int(grasp_center[1])+2, int(grasp_center[0])-60+x1:int(grasp_center[0])] = 0
         d_img_rotated[int(grasp_center[1]):int(grasp_center[1])+2, int(grasp_center[0]):int(grasp_center[0]+60-x2)] = 0
         #plt.figure(2)
