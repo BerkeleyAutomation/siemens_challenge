@@ -262,13 +262,13 @@ class DeclutterDemo():
         grasp_width = self.compute_grasp_width(grasp_center, grasp_angle, grasp_depth_m, d_img)
 
 
-        self.get_height_line(grasp_center, grasp_angle, d_img)
+        #self.get_height_line(grasp_center, grasp_angle, d_img)
 
         # execute planned grasp with hsr interface
         #self.execute_gqcnn(grasp_center, grasp_angle, d_img*1000)
 
         # execute 2DOF grasp
-        #self.execute_gqcnn_2DOF(grasp_center, grasp_depth_m, grasp_angle, grasp_width, d_img*1000)
+        self.execute_gqcnn_2DOF(grasp_center, grasp_depth_m, grasp_angle, grasp_width, d_img*1000)
 
     def focus_on_target_zone(self, d_img):
         d_img[:, :245] = 0
@@ -586,4 +586,4 @@ if __name__ == "__main__":
 
     task = DeclutterDemo(viz=True)
     # rospy.spin()
-    task.lego_demo_old()
+    task.lego_demo()

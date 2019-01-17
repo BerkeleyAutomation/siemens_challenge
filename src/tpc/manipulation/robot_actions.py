@@ -10,6 +10,7 @@ import geometry_msgs.msg
 import tf2_geometry_msgs
 import thread
 import os
+import tf.transformations as transformations
 
 class Robot_Actions():
     """
@@ -364,7 +365,9 @@ class Robot_Actions():
         difference_x = desired_grasp_center.pose.position.x - actual_grasp_center.pose.position.x
         difference_y = desired_grasp_center.pose.position.y - actual_grasp_center.pose.position.y
         base_position_map_frame = self.robot.omni_base.get_pose()
-        self.robot.omni_base.go_abs(base_position_map_frame.pos.x + difference_x, base_position_map_frame.pos.y + difference_y, base_position_map_frame.ori.z, 0)
+        quaternion_matrix = transformations.quaternion_matrix(base_position_map_frame.ori)
+        euler_angles = transformations.euler_from_matrix(quaternion_matrix)
+        self.robot.omni_base.go_abs(base_position_map_frame.pos.x + difference_x, base_position_map_frame.pos.y + difference_y, euler_angles[2], 0)
         base_position_map_frame = self.robot.omni_base.get_pose()
 
     def go_to_start_pose(self):
@@ -406,19 +409,33 @@ class Robot_Actions():
         floor_depth_array = np.load(floor_depth_filename)
         return floor_depth_array[int(grasp_center[1]),int(grasp_center[0])]
 
-    def compute_z_value(self, grasp_center, grasp_depth_m):
-        floor_depth_at_grasp = self.get_floor_depth(grasp_center)
-        print('floor_depth_at_grasp %f' %(floor_depth_at_grasp))
-        height_at_z_0 = 0.004
+    #def compute_z_value(self, grasp_center, grasp_depth_m):
+    #    floor_depth_at_grasp = self.get_floor_depth(grasp_center)
+    #    print('floor_depth_at_grasp %f' %(floor_depth_at_grasp))
+    #
+    #    height_at_z_0 = 0.004
+    #    gripper_height = 0.008
+    #    elevation_angle_in_degrees = 13.97
+    #    if grasp_depth_m > floor_depth_at_grasp:
+    #        z = 0
+    #    else:
+    #        z = floor_depth_at_grasp - grasp_depth_m
+    #        z = math.cos(elevation_angle_in_degrees / 180 * np.pi) * z
+    #        z -= height_at_z_0
+    #        z -= gripper_height
+    #    if z < 0:
+    #        z = 0
+    #    print('z value %f' %(z))
+    #    return z
+
+    def compute_z_value(self, desired_grasp_center):
+        # z value is the distance between the floor and the middle of the gripper
+        floor_z_value_in_map_frame = 0.005
         gripper_height = 0.008
-        elevation_angle_in_degrees = 13.97
-        if grasp_depth_m > floor_depth_at_grasp:
-            z = 0
-        else:
-            z = floor_depth_at_grasp - grasp_depth_m
-            z = math.cos(elevation_angle_in_degrees / 180 * np.pi) * z
-            z -= height_at_z_0
-            z -= gripper_height
+        z = desired_grasp_center.pose.position.z
+        z -= floor_z_value_in_map_frame
+        z -= height_at_z_equals_0
+        z -= gripper_height
         if z < 0:
             z = 0
         print('z value %f' %(z))
@@ -454,7 +471,7 @@ class Robot_Actions():
         print('initial difference between grasps')
         print([desired_grasp_center.pose.position.x - actual_grasp_center.pose.position.x, desired_grasp_center.pose.position.y - actual_grasp_center.pose.position.y])
         self.adjust_grasp_center(desired_grasp_center, actual_grasp_center)
-        z = self.compute_z_value(grasp_center, grasp_depth_m)
+        z = self.compute_z_value(desired_grasp_center)
         self.robot.whole_body.move_to_joint_positions({'arm_lift_joint': z})
         z = self.adjust_z_based_on_grasp_width(z, grasp_width)
         #time.sleep(5)
