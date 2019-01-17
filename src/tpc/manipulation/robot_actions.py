@@ -331,6 +331,10 @@ class Robot_Actions():
         if lin_weight is not None:
             self.robot.linear_weight = lin_weight
         pose_name = self.img_coords2pose(cm, dir_vec, d_img)
+        print('Grasp?')
+        x = raw_input()
+        if x == 'exit':
+            return
         self.grasp_at_pose(pose_name)
         #self.deposit_obj(class_num)
         #self.deposit_obj_fake_ar(class_num % 4)

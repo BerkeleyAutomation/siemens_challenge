@@ -513,19 +513,17 @@ class DeclutterDemo():
 
                     # crop image and generate binary mask
                     # main_mask = crop_img(c_img, simple=True, arc=False, viz=self.viz, task='lego_demo')
-                    print('sdf')
                     # import ipdb; ipdb.set_trace()
                     main_mask = crop_img(c_img, simple=True, arc=False, viz=self.viz)
                     col_img = ColorImage(c_img)
                     workspace_img = col_img.mask_binary(main_mask)
 
                     # cv2.imwrite('debug_imgs/workspace_img.png', workspace_img.data)
-                    print('ff')
                     bboxes, vis_util_image = self.get_bboxes_from_net(c_img, sess=sess)
-                    print('sdf')
                     if len(bboxes) == 0:
                         print("Cleared the workspace")
                         print("Add more objects, then resume")
+                        return
                         #import ipdb; ipdb.set_trace()
                     else:
                         # box_viz = draw_boxes(bboxes, c_img)
@@ -549,8 +547,6 @@ class DeclutterDemo():
                                 c_img, d_img = self.robot.get_img_data()
                                 continue
                         else:
-
-
                             groups = [box.to_group(c_img, col_img) for box in bboxes]
                             groups = merge_groups(groups, cfg.DIST_TOL)
                             singulator = Singulation(col_img, main_mask, [g.mask for g in groups])
@@ -558,11 +554,19 @@ class DeclutterDemo():
 
                         # return to the position it was in before grasping
                         # self.ra.go_to_start_pose()
-                        #self.ra.move_to_start() #probably not required.
-                        #self.ra.head_start_pose()
-                    x = raw_input()
-                    if x == 'exit':
-                        break
+                        varr = raw_input()
+                        self.ra.robot.open_gripper()
+                        self.ra.robot.omni_base.go_abs(0,0,0,0)
+                        self.ra.robot.whole_body.move_to_joint_positions({'arm_flex_joint': -0.005953039901891888,
+                                                            'arm_lift_joint': 3.5673664703075522e-06,
+                                                            'arm_roll_joint': -1.6400026753088877,
+                                                            'head_pan_joint': 1.59,
+                                                            'head_tilt_joint': -1.15,
+                                                            'wrist_flex_joint': -1.570003402348724,
+                                                            'wrist_roll_joint': 0})
+                        return
+                        self.ra.move_to_start() #probably not required.
+                        self.ra.head_start_pose()
                     c_img, d_img = self.robot.get_img_data()
 
     def test(self):
