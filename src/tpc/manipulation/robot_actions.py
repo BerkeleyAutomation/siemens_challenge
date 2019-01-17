@@ -400,34 +400,6 @@ class Robot_Actions():
         pub = rospy.Publisher('new_desired_grasp', geometry_msgs.msg.PoseStamped, queue_size=10)
         return pose_transformed
 
-    def get_floor_depth(self, grasp_center):
-        floor_depth_filename = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                                '..',
-                                                '..',
-                                                '..',
-                                                'data/floor_depth_white_mat.npy')
-        floor_depth_array = np.load(floor_depth_filename)
-        return floor_depth_array[int(grasp_center[1]),int(grasp_center[0])]
-
-    #def compute_z_value(self, grasp_center, grasp_depth_m):
-    #    floor_depth_at_grasp = self.get_floor_depth(grasp_center)
-    #    print('floor_depth_at_grasp %f' %(floor_depth_at_grasp))
-    #
-    #    height_at_z_0 = 0.004
-    #    gripper_height = 0.008
-    #    elevation_angle_in_degrees = 13.97
-    #    if grasp_depth_m > floor_depth_at_grasp:
-    #        z = 0
-    #    else:
-    #        z = floor_depth_at_grasp - grasp_depth_m
-    #        z = math.cos(elevation_angle_in_degrees / 180 * np.pi) * z
-    #        z -= height_at_z_0
-    #        z -= gripper_height
-    #    if z < 0:
-    #        z = 0
-    #    print('z value %f' %(z))
-    #    return z
-
     def compute_z_value(self, desired_grasp_center):
         # z value is the distance between the floor and the middle of the gripper
         floor_z_value_in_map_frame = 0.005
