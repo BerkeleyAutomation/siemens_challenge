@@ -402,9 +402,12 @@ class Robot_Actions():
 
     def compute_z_value(self, desired_grasp_center):
         # z value is the distance between the floor and the middle of the gripper
+        # the new depth sampling from gqcnn outputs the desired grasp on the object surface, i.e. on top of the object. Thus, we lower it by offset_from_object_surface
+        offset_from_object_surface = 0.02
         floor_z_value_in_map_frame = 0.005
         gripper_height = 0.008
         z = desired_grasp_center.pose.position.z
+        z -= offset_from_object_surface
         z -= floor_z_value_in_map_frame
         z -= gripper_height
         if z < 0:
