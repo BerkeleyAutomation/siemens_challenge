@@ -262,7 +262,7 @@ class DeclutterDemo():
         grasp_width = self.compute_grasp_width(grasp_center, grasp_angle, grasp_depth_m, d_img)
 
 
-        #self.get_height_line(grasp_center, grasp_angle, d_img)
+        self.get_height_line(grasp_center, grasp_angle, d_img)
 
         # execute planned grasp with hsr interface
         #self.execute_gqcnn(grasp_center, grasp_angle, d_img*1000)
@@ -285,13 +285,10 @@ class DeclutterDemo():
         return d_img_rotated
 
     def get_height_line(self, grasp_center, grasp_angle, d_img):
-        floor_depth_img = self.get_floor_depth_img()
-        floor_depth_img_crop = self.focus_on_target_zone(floor_depth_img)
-        floor_depth_img_rotated = self.align_grasp_direction_with_axes(grasp_center, grasp_angle, floor_depth_img_crop)
-        d_img_rotated = self.align_grasp_direction_with_axes(grasp_center, grasp_angle, d_img)
-        height_image = d_img_rotated - floor_depth_img_rotated
+        d_img_focused = self.focus_on_target_zone(d_img)
+        d_img_rotated = self.align_grasp_direction_with_axes(grasp_center, grasp_angle, d_img_focused)
+        height_image = d_img_rotated # - floor_depth_img_rotated
         height_image_mirrored = height_image * (-1)
-        height_image_mirrored[height_image_mirrored<0] = 0
         height_image_gradient = np.gradient(height_image_mirrored[int(grasp_center[1]), :])
         plt.figure()
         plt.subplot(1,3,1)
