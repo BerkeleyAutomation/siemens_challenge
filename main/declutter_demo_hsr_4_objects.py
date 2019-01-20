@@ -218,6 +218,7 @@ class DeclutterDemo():
         grasp_center = [action.grasp.center[0], action.grasp.center[1]]
         grasp_angle = action.grasp.angle
         grasp_depth_m = action.grasp.depth
+        grasp_height_offset = action.grasp.height_offset
         # ignore corrupted depth images
         if 0.8 < grasp_depth_m < 1.05:
             pass
@@ -262,13 +263,13 @@ class DeclutterDemo():
         grasp_width = self.compute_grasp_width(grasp_center, grasp_angle, grasp_depth_m, d_img)
 
 
-        self.get_height_line(grasp_center, grasp_angle, d_img)
+        #self.get_height_line(grasp_center, grasp_angle, d_img)
 
         # execute planned grasp with hsr interface
         #self.execute_gqcnn(grasp_center, grasp_angle, d_img*1000)
 
         # execute 2DOF grasp
-        self.execute_gqcnn_2DOF(grasp_center, grasp_depth_m, grasp_angle, grasp_width, d_img*1000)
+        self.execute_gqcnn_2DOF(grasp_center, grasp_depth_m, grasp_angle, grasp_width, grasp_height_offset, d_img*1000)
 
     def focus_on_target_zone(self, d_img):
         d_img[:, :245] = 0
@@ -345,8 +346,8 @@ class DeclutterDemo():
         grasp_direction_normalized = grasp_direction / np.linalg.norm(grasp_direction)
         self.ra.execute_grasp(grasp_center, grasp_direction_normalized, depth_image_mm, 0, 500.0)
 
-    def execute_gqcnn_2DOF(self, grasp_center, depth_m, grasp_angle, grasp_width, d_img):
-        self.ra.execute_2DOF_grasp(grasp_center, depth_m, grasp_angle, grasp_width, d_img)
+    def execute_gqcnn_2DOF(self, grasp_center, depth_m, grasp_angle, grasp_width, grasp_height_offset, d_img):
+        self.ra.execute_2DOF_grasp(grasp_center, depth_m, grasp_angle, grasp_width, grasp_height_offset, d_img)
 
 
     def run_grasp(self, bbox, c_img, col_img, workspace_img, d_img):

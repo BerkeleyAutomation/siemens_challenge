@@ -397,21 +397,23 @@ class Robot_Actions():
         pose.pose.position.z = 0
         trans = self.tfBuffer.lookup_transform('map', 'grasp_i_0', rospy.Time())
         pose_transformed = tf2_geometry_msgs.do_transform_pose(pose, trans)
-        pub = rospy.Publisher('new_desired_grasp', geometry_msgs.msg.PoseStamped, queue_size=10)
         return pose_transformed
 
-    def compute_z_value(self, desired_grasp_center):
+    def compute_z_value(self, desired_grasp_center, grasp_height_offset):
         # z value is the distance between the floor and the middle of the gripper
         # the new depth sampling from gqcnn outputs the desired grasp on the object surface, i.e. on top of the object. Thus, we lower it by offset_from_object_surface
-        offset_from_object_surface = 0.02
+        offset_from_object_surface = grasp_height_offset
         floor_z_value_in_map_frame = 0.005
         gripper_height = 0.008
         z = desired_grasp_center.pose.position.z
+        print('read z %f' %(z))
         z -= offset_from_object_surface
         z -= floor_z_value_in_map_frame
         z -= gripper_height
         if z < 0:
             z = 0
+        print('z height offset %f' %(offset_from_object_surface))
+        print('z value %f' %(z))
         return z
 
     def adjust_z_based_on_grasp_width(self, z, grasp_width):
@@ -426,13 +428,22 @@ class Robot_Actions():
         z += adjustment
         return z
 
-    def execute_2DOF_grasp(self, grasp_center, grasp_depth_m, grasp_angle_dexnet, grasp_width, d_img):
+    def publish_pose(self, posename, pose):
+        pub = rospy.Publisher(posename, geometry_msgs.msg.PoseStamped, queue_size=10)
+        while True:
+            pub.publish(pose)
+
+    def execute_2DOF_grasp(self, grasp_center, grasp_depth_m, grasp_angle_dexnet, grasp_width, grasp_height_offset, d_img):
         grasp_angle_hsr = self.transform_dexnet_angle(grasp_angle_dexnet)
         # use dummy direction because this function needs one as argument
         dir_vec = [0, 1]
         # img_coords2pose exchanges x and y of grasp center, thus having to give them exchanged
         self.img_coords2pose([grasp_center[1], grasp_center[0]], dir_vec, d_img, depth=grasp_depth_m*1000)
         desired_grasp_center = self.get_desired_grasp_in_map_frame()
+        thread.start_new_thread(self.publish_pose,('desired_grasp_pose',desired_grasp_center))
+        true_grasp = self.get_desired_grasp_in_map_frame()
+        true_grasp.pose.position.z -= grasp_height_offset
+        thread.start_new_thread(self.publish_pose,('true_grasp_pose',true_grasp))
         exit_var = raw_input()
         if exit_var == 'exit':
             return
@@ -440,7 +451,7 @@ class Robot_Actions():
         time.sleep(1)
         actual_grasp_center = self.compute_actual_grasp_center()
         self.adjust_grasp_center(desired_grasp_center, actual_grasp_center)
-        z = self.compute_z_value(desired_grasp_center)
+        z = self.compute_z_value(desired_grasp_center, grasp_height_offset)
         self.robot.whole_body.move_to_joint_positions({'arm_lift_joint': z})
         z = self.adjust_z_based_on_grasp_width(z, grasp_width)
         #time.sleep(5)
@@ -449,6 +460,8 @@ class Robot_Actions():
         self.robot.close_gripper()
         #time.sleep(5)
         self.robot.whole_body.move_to_joint_positions({'arm_lift_joint': z + 0.2})
+        time.sleep(1)
+        self.robot.open_gripper()
 
 
     def l_singulate(self, cm, dir_vec, d_img):
