@@ -452,7 +452,6 @@ class Robot_Actions():
         actual_grasp_center = self.compute_actual_grasp_center()
         self.adjust_grasp_center(desired_grasp_center, actual_grasp_center)
         z = self.compute_z_value(desired_grasp_center, grasp_height_offset)
-        self.robot.whole_body.move_to_joint_positions({'arm_lift_joint': z})
         z = self.adjust_z_based_on_grasp_width(z, grasp_width)
         #time.sleep(5)
         self.robot.whole_body.move_to_joint_positions({'arm_lift_joint': z})

@@ -220,7 +220,7 @@ class DeclutterDemo():
         grasp_depth_m = action.grasp.depth
         grasp_height_offset = action.grasp.height_offset
         # ignore corrupted depth images
-        if 0.8 < grasp_depth_m < 1.05:
+        if 0.7 < grasp_depth_m < 1.05:
             pass
         else:
             print('invalid depth image')
