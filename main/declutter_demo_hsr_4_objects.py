@@ -219,6 +219,11 @@ class DeclutterDemo():
         grasp_angle = action.grasp.angle
         grasp_depth_m = action.grasp.depth
         grasp_height_offset = action.grasp.height_offset
+        print('grasp width %f' %(action.grasp.width))
+        print(action.grasp.feature_vec)
+        dir_vec = [0, 1]
+        self.ra.img_coords2pose([action.grasp.feature_vec[1], action.grasp.feature_vec[0]], dir_vec, d_img*1000, depth=grasp_depth_m*1000)
+        self.ra.img_coords2pose([action.grasp.feature_vec[3], action.grasp.feature_vec[2]], dir_vec, d_img*1000, depth=grasp_depth_m*1000)
         # ignore corrupted depth images
         if 0.7 < grasp_depth_m < 1.05:
             pass
