@@ -10,6 +10,7 @@ import thread
 import tf
 import math
 import os
+import time
 
 import importlib
 import matplotlib.pyplot as plt
@@ -34,6 +35,10 @@ from tpc.detection.detector import Detector
 from hsr_core.hsr_robot_interface import Robot_Interface
 
 from hsr_core.sensors import RGBD
+
+import tf2_ros
+
+import geometry_msgs
 
 
 
@@ -78,6 +83,8 @@ class DeclutterDemo():
         self.viz = viz
 
         self.cam = RGBD()
+
+        self.tfBuffer = tf2_ros.Buffer()
 
     def run_grasp_gqcnn(self, c_img, d_img):
         import json
@@ -219,11 +226,9 @@ class DeclutterDemo():
         grasp_angle = action.grasp.angle
         grasp_depth_m = action.grasp.depth
         grasp_height_offset = action.grasp.height_offset
+        grasp_width = action.grasp.width
         print('grasp width %f' %(action.grasp.width))
-        print(action.grasp.feature_vec)
-        dir_vec = [0, 1]
-        self.ra.img_coords2pose([action.grasp.feature_vec[1], action.grasp.feature_vec[0]], dir_vec, d_img*1000, depth=grasp_depth_m*1000)
-        self.ra.img_coords2pose([action.grasp.feature_vec[3], action.grasp.feature_vec[2]], dir_vec, d_img*1000, depth=grasp_depth_m*1000)
+
         # ignore corrupted depth images
         if 0.7 < grasp_depth_m < 1.05:
             pass
@@ -265,8 +270,6 @@ class DeclutterDemo():
             #vis.savefig(TARGET_DIR + 'final_grasp_' + str(new_file_number).zfill(3))
             vis.show()
 
-        grasp_width = self.compute_grasp_width(grasp_center, grasp_angle, grasp_depth_m, d_img)
-
 
         #self.get_height_line(grasp_center, grasp_angle, d_img)
 
@@ -282,69 +285,6 @@ class DeclutterDemo():
         d_img[:150, :] = 0
         d_img[310:, :] = 0
         return d_img
-
-    def align_grasp_direction_with_axes(self, grasp_center, grasp_angle, d_img):
-        rot_angle = grasp_angle/np.pi*180
-        center = (grasp_center[0], grasp_center[1])
-        M = cv2.getRotationMatrix2D(center, rot_angle, 1)
-        d_img_rotated = cv2.warpAffine(d_img, M, (480,640))
-        return d_img_rotated
-
-    def get_height_line(self, grasp_center, grasp_angle, d_img):
-        d_img_focused = self.focus_on_target_zone(d_img)
-        d_img_rotated = self.align_grasp_direction_with_axes(grasp_center, grasp_angle, d_img_focused)
-        height_image = d_img_rotated # - floor_depth_img_rotated
-        height_image_mirrored = height_image * (-1)
-        height_image_gradient = np.gradient(height_image_mirrored[int(grasp_center[1]), :])
-        plt.figure()
-        plt.subplot(1,3,1)
-        plt.title('Input')
-        plt.plot(d_img_rotated[int(grasp_center[1]), :])
-        plt.subplot(1,3,2)
-        plt.title('Height')
-        plt.plot(height_image_mirrored[int(grasp_center[1]), :])
-        plt.subplot(1,3,3)
-        plt.title('Gradient')
-        plt.plot(height_image_gradient)
-        plt.show()
-
-    def get_floor_depth_img(self):
-        floor_depth_filename = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                                '..',
-                                                'data/floor_depth_white_mat.npy')
-        floor_depth_array = np.load(floor_depth_filename)
-        return floor_depth_array
-
-    def get_floor_depth(self, grasp_center):
-        floor_depth_array = self.get_floor_depth_img
-        return floor_depth_array[int(grasp_center[1]),int(grasp_center[0])]
-
-    def compute_grasp_width(self, grasp_center, grasp_angle, grasp_depth_m, d_img):
-        d_img_rotated = self.align_grasp_direction_with_axes(grasp_center, grasp_angle, d_img)
-        #d_img_rotated[int(grasp_center[1]):int(grasp_center[1])+5, int(grasp_center[0])-60:int(grasp_center[0])+60] = 0
-        x1 = 0
-        x2 = 0
-        object_border_found = False
-        while x1 < 60 and not object_border_found:
-            if d_img_rotated[int(grasp_center[1]), int(grasp_center[0])-60+x1] < grasp_depth_m and d_img_rotated[int(grasp_center[1]), int(grasp_center[0])-60+x1-1] > grasp_depth_m and not d_img_rotated[int(grasp_center[1]), int(grasp_center[0])-60+x1] == 0:
-                object_border_found = True
-            x1 += 1
-        object_border_found = False
-        while x2 < 60 and not object_border_found:
-            if d_img_rotated[int(grasp_center[1]), int(grasp_center[0])+60-x2] < grasp_depth_m and d_img_rotated[int(grasp_center[1]), int(grasp_center[0])+60-x2+1] > grasp_depth_m and not d_img_rotated[int(grasp_center[1]), int(grasp_center[0])+60-x2] == 0:
-                object_border_found = True
-            x2 += 1
-        #d_img_rotated[int(grasp_center[1]):int(grasp_center[1])+2, int(grasp_center[0])-60+x1:int(grasp_center[0])] = 0
-        d_img_rotated[int(grasp_center[1]):int(grasp_center[1])+2, int(grasp_center[0]):int(grasp_center[0]+60-x2)] = 0
-        #plt.figure(2)
-        #plt.subplot(1,2,1)
-        #plt.imshow(d_img)
-        #plt.subplot(1,2,2)
-        #plt.imshow(d_img_rotated)
-        #plt.show()
-        grasp_width = (60-x1 + 60 - x2)* 0.0018
-        return grasp_width
-
 
     def execute_gqcnn(self, grasp_center, grasp_angle, depth_image_mm):
         grasp_direction = np.array([math.sin(grasp_angle), math.cos(grasp_angle)])

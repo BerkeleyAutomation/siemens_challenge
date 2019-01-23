@@ -406,14 +406,11 @@ class Robot_Actions():
         floor_z_value_in_map_frame = 0.005
         gripper_height = 0.008
         z = desired_grasp_center.pose.position.z
-        print('read z %f' %(z))
         z -= offset_from_object_surface
         z -= floor_z_value_in_map_frame
         z -= gripper_height
         if z < 0:
             z = 0
-        print('z height offset %f' %(offset_from_object_surface))
-        print('z value %f' %(z))
         return z
 
     def adjust_z_based_on_grasp_width(self, z, grasp_width):
