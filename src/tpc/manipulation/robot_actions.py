@@ -382,7 +382,7 @@ class Robot_Actions():
     def go_to_grasp_pose(self, grasp_angle_hsr):
         self.robot.open_gripper()
         self.robot.whole_body.move_to_joint_positions({'arm_roll_joint': -0.04,
-                                        'arm_lift_joint': 0.15,
+                                        'arm_lift_joint': 0.25,
                                         'arm_flex_joint': -1.91,
                                         'wrist_flex_joint': -1.18,
                                         'wrist_roll_joint': grasp_angle_hsr})
