@@ -364,6 +364,7 @@ class Robot_Actions():
     def adjust_grasp_center(self, desired_grasp_center, actual_grasp_center):
         difference_x = desired_grasp_center.pose.position.x - actual_grasp_center.pose.position.x
         difference_y = desired_grasp_center.pose.position.y - actual_grasp_center.pose.position.y
+        print('difference [%f, %f]' %(difference_x, difference_y))
         base_position_map_frame = self.robot.omni_base.get_pose()
         quaternion_matrix = transformations.quaternion_matrix(base_position_map_frame.ori)
         euler_angles = transformations.euler_from_matrix(quaternion_matrix)
@@ -371,6 +372,7 @@ class Robot_Actions():
         base_position_map_frame = self.robot.omni_base.get_pose()
 
     def go_to_start_pose(self):
+        self.robot.omni_base.go_abs(0,0,0,0)
         self.robot.whole_body.move_to_joint_positions({'arm_flex_joint': -0.005953039901891888,
                                         'arm_lift_joint': 3.5673664703075522e-06,
                                         'arm_roll_joint': -1.6400026753088877,
@@ -387,6 +389,12 @@ class Robot_Actions():
                                         'wrist_flex_joint': -1.18,
                                         'wrist_roll_joint': grasp_angle_hsr})
         time.sleep(1)
+
+    def go_to_drop_pose(self):
+        self.robot.omni_base.go_abs(0,0.1,np.pi/2,0)
+
+    def drop_object(self):
+        self.robot.open_gripper()
 
     def get_desired_grasp_in_map_frame(self):
         pose = geometry_msgs.msg.PoseStamped()
@@ -441,9 +449,9 @@ class Robot_Actions():
         true_grasp = self.get_desired_grasp_in_map_frame()
         true_grasp.pose.position.z -= grasp_height_offset
         thread.start_new_thread(self.publish_pose,('true_grasp_pose',true_grasp))
-        exit_var = raw_input()
-        if exit_var == 'exit':
-            return
+        #exit_var = raw_input()
+        #if exit_var == 'exit':
+        #    return
         self.go_to_grasp_pose(grasp_angle_hsr)
         time.sleep(1)
         actual_grasp_center = self.compute_actual_grasp_center()
@@ -455,9 +463,10 @@ class Robot_Actions():
         #time.sleep(5)
         self.robot.close_gripper()
         #time.sleep(5)
-        self.robot.whole_body.move_to_joint_positions({'arm_lift_joint': z + 0.2})
-        time.sleep(1)
-        self.robot.open_gripper()
+        self.robot.whole_body.move_to_joint_positions({'arm_lift_joint': z + 0.3})
+        self.go_to_drop_pose()
+        self.drop_object()
+        self.go_to_start_pose()
 
 
     def l_singulate(self, cm, dir_vec, d_img):

@@ -227,7 +227,7 @@ class DeclutterDemo():
         grasp_depth_m = action.grasp.depth
         grasp_height_offset = action.grasp.height_offset
         grasp_width = action.grasp.width
-        print('grasp width %f' %(action.grasp.width))
+        print('grasp width %f' %(grasp_width))
 
         # ignore corrupted depth images
         if 0.7 < grasp_depth_m < 1.05:
@@ -255,6 +255,7 @@ class DeclutterDemo():
             new_file_number = int(last_file_number) + 1
 
         # vis final grasp
+        policy_config['vis']['final_grasp'] = False
         if policy_config['vis']['final_grasp']:
             vis.figure(size=(40,40))
             vis.subplot(1,2,1)
