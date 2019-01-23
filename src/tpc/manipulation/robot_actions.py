@@ -466,7 +466,6 @@ class Robot_Actions():
         self.robot.whole_body.move_to_joint_positions({'arm_lift_joint': z + 0.3})
         self.go_to_drop_pose()
         self.drop_object()
-        self.go_to_start_pose()
 
 
     def l_singulate(self, cm, dir_vec, d_img):

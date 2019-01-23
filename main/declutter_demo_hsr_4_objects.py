@@ -86,7 +86,7 @@ class DeclutterDemo():
 
         self.tfBuffer = tf2_ros.Buffer()
 
-    def run_grasp_gqcnn(self, c_img, d_img):
+    def run_grasp_gqcnn(self, c_img, d_img, number_failed):
         import json
         import os
 
@@ -234,7 +234,7 @@ class DeclutterDemo():
             pass
         else:
             print('invalid depth image')
-            return
+            return number_failed + 1
 
         rgb_img = np.asarray(c_img)
         color_im = ColorImage(rgb_img,
@@ -279,6 +279,7 @@ class DeclutterDemo():
 
         # execute 2DOF grasp
         self.execute_gqcnn_2DOF(grasp_center, grasp_depth_m, grasp_angle, grasp_width, grasp_height_offset, d_img*1000)
+        return 0
 
     def focus_on_target_zone(self, d_img):
         d_img[:, :245] = 0
@@ -409,7 +410,7 @@ class DeclutterDemo():
                         to_grasp.append((in_group, lego_class_num, color_name))
         return to_grasp, to_singulate
 
-    def lego_demo(self):
+    def lego_demo(self, number_failed):
         self.ra.go_to_start_pose()
         time.sleep(1)
         c_img, d_img = self.robot.get_img_data()
@@ -420,7 +421,9 @@ class DeclutterDemo():
         depth_image_mm = np.asarray(d_img[:,:])
         depth_image_m = depth_image_mm/1000
 
-        self.run_grasp_gqcnn(c_img, depth_image_m)
+        number_failed = self.run_grasp_gqcnn(c_img, depth_image_m, number_failed)
+        return number_failed
+        
     
     def lego_demo_old(self):
         """
@@ -523,6 +526,10 @@ if __name__ == "__main__":
     else:
         DEBUG = False
 
-    task = DeclutterDemo(viz=True)
-    # rospy.spin()
-    task.lego_demo()
+    number_failed = 0
+    while number_failed <= 3:
+        print('Starting new run with %f fails in a row now' %(number_failed))
+        task = DeclutterDemo(viz=True)
+        # rospy.spin()
+        number_failed = task.lego_demo(number_failed)
+    print('Nothing to grasp, demo done.')
