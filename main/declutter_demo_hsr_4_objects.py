@@ -257,7 +257,7 @@ class DeclutterDemo():
             new_file_number = int(last_file_number) + 1
 
         # vis final grasp
-        policy_config['vis']['final_grasp'] = False
+        #policy_config['vis']['final_grasp'] = False
         if policy_config['vis']['final_grasp']:
             vis.figure(size=(40,40))
             vis.subplot(1,2,1)
@@ -529,9 +529,10 @@ if __name__ == "__main__":
         DEBUG = False
 
     number_failed = 0
-    while number_failed <= 3:
-        print('Starting new run with %f fails in a row now' %(number_failed))
+    while number_failed <= 2:
+        print('Starting new run with %d fails in a row now' %(number_failed))
         task = DeclutterDemo(viz=True)
         # rospy.spin()
         number_failed = task.lego_demo(number_failed)
+        del task
     print('Nothing to grasp, demo done.')

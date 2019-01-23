@@ -372,7 +372,9 @@ class Robot_Actions():
         base_position_map_frame = self.robot.omni_base.get_pose()
 
     def go_to_start_pose(self):
-        self.robot.omni_base.go_abs(0,0,0,0)
+        base_pose = self.robot.omni_base.get_pose()
+        if abs(base_pose.pos.x) >= 0.02 or abs(base_pose.pos.y) >= 0.02 or abs(base_pose.pos.z) >= 0.02 or base_pose.ori.w <= 0.95:
+            self.robot.omni_base.go_abs(0,0,0,0)
         self.robot.whole_body.move_to_joint_positions({'arm_flex_joint': -0.005953039901891888,
                                         'arm_lift_joint': 3.5673664703075522e-06,
                                         'arm_roll_joint': -1.6400026753088877,
@@ -392,6 +394,7 @@ class Robot_Actions():
 
     def go_to_drop_pose(self):
         self.robot.omni_base.go_abs(0,0.1,np.pi/2,0)
+        self.robot.whole_body.move_to_joint_positions({'arm_flex_joint': -np.pi / 2})
 
     def drop_object(self):
         self.robot.open_gripper()
