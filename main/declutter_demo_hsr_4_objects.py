@@ -151,7 +151,7 @@ class DeclutterDemo():
         camera_intr = CameraIntrinsics.load(camera_intr_filename)
             
         # read images
-        depth_data = self.focus_on_target_zone(d_img)
+        depth_data = d_img#self.focus_on_target_zone(d_img)
 
 
         depth_im = DepthImage(depth_data, frame=camera_intr.frame)
