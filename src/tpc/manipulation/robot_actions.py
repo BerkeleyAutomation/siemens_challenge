@@ -12,6 +12,8 @@ import thread
 import os
 import tf.transformations as transformations
 
+from hsr_core.sensors import Wrist_RGB
+
 class Robot_Actions():
     """
     high level declutering task-specific interface that interacts 
@@ -30,6 +32,7 @@ class Robot_Actions():
         self.robot = robot
         self.tfBuffer = tf2_ros.Buffer()
         self.listener = tf2_ros.TransformListener(self.tfBuffer)
+        self.handcam = Wrist_RGB()
 
     def safe_wait(self):
         """
@@ -340,17 +343,6 @@ class Robot_Actions():
         #self.deposit_obj(class_num)
         #self.deposit_obj_fake_ar(class_num % 4)
 
-    def compute_actual_grasp_center(self):
-        pose = geometry_msgs.msg.PoseStamped()
-        pose.header.stamp = rospy.Time.now()
-        pose.header.frame_id = "hand_palm_link"
-        pose.pose.position.x = 0
-        pose.pose.position.y = 0
-        pose.pose.position.z = 0
-        trans = self.tfBuffer.lookup_transform('map', 'hand_palm_link', rospy.Time())
-        pose_transformed = tf2_geometry_msgs.do_transform_pose(pose, trans)
-        return pose_transformed
-
     def transform_dexnet_angle(self, grasp_angle_dexnet):
         # rgbd camera is rotated by 0.32 radian, need to compensate that in angle
         grasp_angle_dexnet -= 0.32
@@ -403,14 +395,14 @@ class Robot_Actions():
     def drop_object(self):
         self.robot.open_gripper()
 
-    def get_desired_grasp_in_map_frame(self):
+    def get_frame_origin(self, frame_name):
         pose = geometry_msgs.msg.PoseStamped()
         pose.header.stamp = rospy.Time.now()
-        pose.header.frame_id = "grasp_i_0"
+        pose.header.frame_id = frame_name
         pose.pose.position.x = 0
         pose.pose.position.y = 0
         pose.pose.position.z = 0
-        trans = self.tfBuffer.lookup_transform('map', 'grasp_i_0', rospy.Time())
+        trans = self.tfBuffer.lookup_transform('map', frame_name, rospy.Time())
         pose_transformed = tf2_geometry_msgs.do_transform_pose(pose, trans)
         return pose_transformed
 
@@ -445,23 +437,43 @@ class Robot_Actions():
         while True:
             pub.publish(pose)
 
+    def read_handcamera_RGB(self):
+        img = self.handcam.read_data()
+        return img
+
+    def check_if_object_grasped_handcam(self):
+        handcam_image = self.read_handcamera_RGB()
+        #import matplotlib.pyplot as plt
+        #plt.imshow(handcam_image)
+        #plt.show()
+        count_black_pixel = (handcam_image[240:300,160:260,:] <= 20).sum()
+        print('number black pixels %d' %(count_black_pixel))
+        return count_black_pixel < 15000
+
+    def check_if_object_grasped(self):
+        left_distal_link_pose = self.get_frame_origin('hand_l_distal_link')
+        right_distal_link_pose = self.get_frame_origin('hand_r_distal_link')
+        distance_x = left_distal_link_pose.pose.position.x - right_distal_link_pose.pose.position.x
+        distance_y = left_distal_link_pose.pose.position.y - right_distal_link_pose.pose.position.y
+        euclidean_distance = math.sqrt(distance_x * distance_x + distance_y * distance_y)
+        print('euclidean distance %f' %(euclidean_distance))
+        return euclidean_distance >= 0.035
+
+
     def execute_2DOF_grasp(self, grasp_center, grasp_depth_m, grasp_angle_dexnet, grasp_width, grasp_height_offset, d_img):
         grasp_angle_hsr = self.transform_dexnet_angle(grasp_angle_dexnet)
         # use dummy direction because this function needs one as argument
         dir_vec = [0, 1]
         # img_coords2pose exchanges x and y of grasp center, thus having to give them exchanged
-        self.img_coords2pose([grasp_center[1], grasp_center[0]], dir_vec, d_img, depth=grasp_depth_m*1000)
-        desired_grasp_center = self.get_desired_grasp_in_map_frame()
+        grasp_frame_name = self.img_coords2pose([grasp_center[1], grasp_center[0]], dir_vec, d_img, depth=grasp_depth_m*1000)
+        desired_grasp_center = self.get_frame_origin(grasp_frame_name)
         thread.start_new_thread(self.publish_pose,('desired_grasp_pose',desired_grasp_center))
-        true_grasp = self.get_desired_grasp_in_map_frame()
-        true_grasp.pose.position.z -= grasp_height_offset
-        thread.start_new_thread(self.publish_pose,('true_grasp_pose',true_grasp))
         #exit_var = raw_input()
         #if exit_var == 'exit':
         #    return
         self.go_to_grasp_pose(grasp_angle_hsr)
         time.sleep(1)
-        actual_grasp_center = self.compute_actual_grasp_center()
+        actual_grasp_center = self.get_frame_origin('hand_palm_link')
         self.adjust_grasp_center(desired_grasp_center, actual_grasp_center)
         z = self.compute_z_value(desired_grasp_center, grasp_height_offset)
         z = self.adjust_z_based_on_grasp_width(z, grasp_width)
@@ -471,8 +483,10 @@ class Robot_Actions():
         self.robot.close_gripper()
         #time.sleep(5)
         self.robot.whole_body.move_to_joint_positions({'arm_lift_joint': z + 0.3})
-        self.go_to_drop_pose()
-        self.drop_object()
+        self.robot.close_gripper()
+        if self.check_if_object_grasped():
+            self.go_to_drop_pose()
+            self.drop_object()
 
 
     def l_singulate(self, cm, dir_vec, d_img):
