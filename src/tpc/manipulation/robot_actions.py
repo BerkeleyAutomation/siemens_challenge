@@ -356,7 +356,6 @@ class Robot_Actions():
     def adjust_grasp_center(self, desired_grasp_center, actual_grasp_center):
         difference_x = desired_grasp_center.pose.position.x - actual_grasp_center.pose.position.x
         difference_y = desired_grasp_center.pose.position.y - actual_grasp_center.pose.position.y
-        print('difference [%f, %f]' %(difference_x, difference_y))
         base_position_map_frame = self.robot.omni_base.get_pose()
         quaternion_matrix = transformations.quaternion_matrix(base_position_map_frame.ori)
         euler_angles = transformations.euler_from_matrix(quaternion_matrix)
@@ -389,7 +388,7 @@ class Robot_Actions():
         time.sleep(1)
 
     def go_to_drop_pose(self):
-        self.robot.omni_base.go_abs(0,0.1,np.pi/2,0)
+        self.robot.omni_base.go_abs(0,0.2,np.pi/2,0)
         self.robot.whole_body.move_to_joint_positions({'arm_flex_joint': -np.pi / 2})
 
     def drop_object(self):
@@ -456,7 +455,6 @@ class Robot_Actions():
         distance_x = left_distal_link_pose.pose.position.x - right_distal_link_pose.pose.position.x
         distance_y = left_distal_link_pose.pose.position.y - right_distal_link_pose.pose.position.y
         euclidean_distance = math.sqrt(distance_x * distance_x + distance_y * distance_y)
-        print('euclidean distance %f' %(euclidean_distance))
         return euclidean_distance >= 0.035
 
 
