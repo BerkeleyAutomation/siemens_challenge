@@ -11,6 +11,8 @@ import tf
 import math
 import os
 import time
+import json
+from PIL import Image
 
 import importlib
 import matplotlib.pyplot as plt
@@ -47,7 +49,7 @@ ColorImage = getattr(img, 'ColorImage')
 BinaryImage = getattr(img, 'BinaryImage')
 
 
-class DeclutterDemo():
+class SurfaceDeclutter():
     """
     This class is for use with the robot
     Pipeline it tests is labeling all objects in an image using web interface,
@@ -64,14 +66,11 @@ class DeclutterDemo():
         high level declutering task-specific interface that interacts
         with the HSR_CORE Robot_Interface:
         https://github.com/BerkeleyAutomation/HSR_CORE
-    viz : boolean
-        save images from perception pipeline
-
     """
 
-    def __init__(self, viz=False, maskrcnn=False):
+    def __init__(self, maskrcnn=False):
         """
-        Class that runs decluttering task
+        Class that runs surface decluttering task
         """
         self.robot = Robot_Interface()
         self.ra = Robot_Actions(self.robot)
@@ -79,20 +78,10 @@ class DeclutterDemo():
         model_path = 'main/model/sim_then_real_on_real_4objects/output_inference_graph.pb'
         label_map_path = 'main/model/sim_then_real_on_real_4objects/object-detection.pbtxt'
         self.det = Detector(model_path, label_map_path)
-
-        self.viz = viz
-
         self.cam = RGBD()
-
         self.tfBuffer = tf2_ros.Buffer()
 
     def run_grasp_gqcnn(self, c_img, d_img, number_failed):
-        import json
-        import os
-
-
-        from PIL import Image
-
         from autolab_core import RigidTransform, YamlConfig, Logger
         from perception import BinaryImage, CameraIntrinsics, ColorImage, DepthImage, RgbdImage
         from visualization import Visualizer2D as vis
@@ -151,16 +140,11 @@ class DeclutterDemo():
         camera_intr = CameraIntrinsics.load(camera_intr_filename)
             
         # read images
-        depth_data = d_img#self.focus_on_target_zone(d_img)
-
-
-        depth_im = DepthImage(depth_data, frame=camera_intr.frame)
-        rgb_img = c_img
-        #rgb_img_np = np.array(rgb_img).astype(np.uint8)
-        #rgb_img_cropped = rgb_img.crop((245, 150, 420, 310))
-        #plt.imshow(depth_data)
-        #plt.show()
-        color_im = ColorImage(np.zeros([depth_im.height, depth_im.width, 3]).astype(np.uint8), frame=camera_intr.frame)
+        depth_im = DepthImage(d_img, frame=camera_intr.frame)
+        rgb_img = np.asarray(c_img)
+        color_im = ColorImage(rgb_img,
+                                frame=camera_intr.frame, encoding='rgb8')
+        color_im = color_im.rgb2bgr()
 
         
         # optionally read a segmask
@@ -237,11 +221,6 @@ class DeclutterDemo():
             print('invalid depth image')
             return number_failed + 1
 
-        rgb_img = np.asarray(c_img)
-        color_im = ColorImage(rgb_img,
-                                frame=camera_intr.frame, encoding='rgb8')
-        color_im = color_im.rgb2bgr()
-
         TARGET_DIR = '/home/benno/experiments/hsr/gqcnn/10_15_elevation_v2/'
         if not os.path.exists(TARGET_DIR):
             os.makedirs(TARGET_DIR)
@@ -266,7 +245,7 @@ class DeclutterDemo():
             vis.grasp(action.grasp, scale=2.5, show_center=False, show_axis=True)
             vis.title('Planned grasp at depth {0:.3f}m with Q={1:.3f}'.format(action.grasp.depth, action.q_value))
             vis.subplot(1,2,2)
-            vis.imshow(color_im)
+            vis.imshow(rgbd_im.color)
             vis.grasp(action.grasp, scale=2.5, show_center=False, show_axis=True)
             vis.title('Planned grasp at depth {0:.3f}m with Q={1:.3f}'.format(action.grasp.depth, action.q_value))
             #vis.savefig(TARGET_DIR + 'final_grasp_' + str(new_file_number).zfill(3))
@@ -297,51 +276,7 @@ class DeclutterDemo():
     def execute_gqcnn_2DOF(self, grasp_center, depth_m, grasp_angle, grasp_width, grasp_height_offset, d_img):
         self.ra.execute_2DOF_grasp(grasp_center, depth_m, grasp_angle, grasp_width, grasp_height_offset, d_img)
 
-
-    def run_grasp(self, bbox, c_img, col_img, workspace_img, d_img):
-        '''
-        Parameters
-        ----------
-        bbox : Bbox
-            bounding box of object to
-            be grasped
-        c_img : cv2.img
-            rgb image from robot
-        col_img : ColorImage
-            c_img wrapped in ColorImage
-        workspace_img : BinaryImage
-            c_img cropped to workspace
-        d_img : cv2.img
-            depth image from robot
-
-        '''
-        # print("Grasping a " + cfg.labels[bbox.label])
-        try:
-            group = bbox.to_group(c_img, col_img)
-        except ValueError:
-            return
-        # display_grasps(workspace_img, [group])
-        self.ra.execute_grasp(group.cm, group.dir, d_img, bbox.label, 500.0)
-
-    def run_singulate(self, singulator, d_img):
-        """
-        execute the singulation strategy
-
-        Parameters
-        ----------
-        singulator : Singulation
-            class for handling singulation
-            strategy
-        d_img : cv2.img
-            depth image from robot
-
-        """
-        # print("Singulating")
-        waypoints, rot, free_pix = singulator.get_singulation()
-        singulator.display_singulation()
-        self.ra.execute_singulate(waypoints, rot, d_img)
-
-    def get_bboxes_from_net(self, img, sess=None, save_img=False):
+    def get_bboxes_from_net(self, img, sess=None):
         """
         fetch bounding boxes from the object
         detection network
@@ -362,62 +297,19 @@ class DeclutterDemo():
         """
         rgb_image = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         output_dict, vis_util_image = self.det.predict(rgb_image, sess=sess)
-        if save_img:
-            plt.savefig('debug_imgs/predictions.png')
-            plt.close()
-            plt.clf()
-            plt.cla()
-        # img = cv2.imread(path)
         boxes = format_net_bboxes(output_dict, img.shape)
         return boxes, vis_util_image
 
-
-
-    def find_grasps(self, groups, col_img):
-        """
-        find all lego blocks to grasp and singulate
-        in groups
-
-        '''
-        Parameters
-        ----------
-        groups : []
-            list of groups of clutter
-        col_img : ColorImage
-            rgb image wrapped in ColorImage class
-
-        Returns
-        -------
-        to_grasp : []
-            a list of groups of objects to grasp
-        to_singulate : []
-            list of groups of objects to
-            singulate
-
-        """
-        to_grasp = []
-        to_singulate = []
-        for group in groups:
-            inner_groups = grasps_within_pile(col_img.mask_binary(group.mask))
-
-            if len(inner_groups) == 0:
-                to_singulate.append(group)
-            else:
-                for in_group in inner_groups:
-                    class_num = hsv_classify(col_img.mask_binary(in_group.mask))
-                    color_name = class_num_to_name(class_num)
-                    if color_name in cfg.HUES_TO_BINS:
-                        lego_class_num = cfg.HUES_TO_BINS[color_name]
-                        to_grasp.append((in_group, lego_class_num, color_name))
-        return to_grasp, to_singulate
-
-    def lego_demo(self, number_failed):
-        self.ra.go_to_start_pose()
-        time.sleep(1)
+    def read_RGBD_image(self):
         c_img, d_img = self.robot.get_img_data()
         while (c_img is None or d_img is None):
             c_img, d_img = self.robot.get_img_data()
+        return c_img, d_img
 
+    def declutter(self, number_failed):
+        self.ra.go_to_start_pose()
+        time.sleep(1)
+        c_img, d_img = self.read_RGBD_image()
         # convert depth image from mm to m because dexnet uses m
         depth_image_mm = np.asarray(d_img[:,:])
         depth_image_m = depth_image_mm/1000
@@ -426,119 +318,46 @@ class DeclutterDemo():
         return number_failed
         
     
-    def lego_demo_old(self):
-        """
-        demo that runs color based segmentation and declutters legos
-        """
-
-        # if true, use hard-coded deposit without AR markers
-        hard_code = True
-
-        # setup robot in front-facing start pose to take image of legos
-        #self.ra.go_to_start_pose()
-        #self.ra.set_start_position()
-        self.ra.head_start_pose()
-        c_img, d_img = self.robot.get_img_data()
-
-
-        # self.ra.move_base(z=-2.7)
-
-        # import ipdb; ipdb.set_trace()
-        while c_img is None or d_img is None:
-            c_img, d_img = self.robot.get_img_data()
+    def segment(self):
+        c_img, d_img = self.read_RGBD_image()
         with self.det.detection_graph.as_default():
             with tensorflow.Session() as sess:
-                while not (c_img is None or d_img is None):
-                    # if self.viz:
-                    #     path = 'debug_imgs/web.png'
-                    #     cv2.imwrite(path, c_img)
-                    #     time.sleep(2)
+                main_mask = crop_img(c_img, simple=True, arc=False)
+                col_img = ColorImage(c_img)
+                workspace_img = col_img.mask_binary(main_mask)
 
-                    # crop image and generate binary mask
-                    # main_mask = crop_img(c_img, simple=True, arc=False, viz=self.viz, task='lego_demo')
-                    # import ipdb; ipdb.set_trace()
-                    main_mask = crop_img(c_img, simple=True, arc=False, viz=self.viz)
-                    col_img = ColorImage(c_img)
-                    workspace_img = col_img.mask_binary(main_mask)
+                bboxes, vis_util_image = self.get_bboxes_from_net(c_img, sess=sess)
+                if len(bboxes) == 0:
+                    print("Cleared the workspace")
+                    print("Add more objects, then resume")
+                    return
+                else:
+                    rgb_image = cv2.cvtColor(c_img, cv2.COLOR_BGR2RGB)
+                    box_viz = draw_boxes(bboxes, rgb_image)
+                    return
+                    single_objs = find_isolated_objects_by_overlap(bboxes)
+                    if len(single_objs) == 0:
+                        single_objs = [bboxes[0]]
 
-                    # cv2.imwrite('debug_imgs/workspace_img.png', workspace_img.data)
-                    bboxes, vis_util_image = self.get_bboxes_from_net(c_img, sess=sess)
-                    if len(bboxes) == 0:
-                        print("Cleared the workspace")
-                        print("Add more objects, then resume")
-                        return
-                        #import ipdb; ipdb.set_trace()
+                    if len(single_objs) > 0:
+                        pass
                     else:
-                        box_viz = draw_boxes(bboxes, c_img)
-                        plt.imshow(box_viz)
-                        plt.show()
-                        return
-                        cv2.imwrite("debug_imgs/box.png", box_viz)
-                        single_objs = find_isolated_objects_by_overlap(bboxes)
-                        if len(single_objs) == 0:
-                            single_objs = [bboxes[0]]
-                            # import ipdb; ipdb.set_trace()
-                            # single_objs = find_isolated_objects_by_distance(bboxes, col_img)
+                        groups = [box.to_group(c_img, col_img) for box in bboxes]
+                        groups = merge_groups(groups, cfg.DIST_TOL)
+                        singulator = Singulation(col_img, main_mask, [g.mask for g in groups])
+                        self.run_singulate(singulator, d_img)
 
-                        if len(single_objs) > 0:
-                            to_grasp = select_first_obj(single_objs)
 
-                            try:
-                                # self.ra.execute_grasp(to_grasp.cm, to_grasp.dir, d_img, class_num=to_grasp.label)
-                                self.run_grasp(to_grasp, c_img, col_img, workspace_img, d_img)
-                            except Exception as ex:
-                                print(ex)
-                                #self.ra.move_to_start()
-                                #self.ra.head_start_pose()
-                                c_img, d_img = self.robot.get_img_data()
-                                continue
-                        else:
-                            groups = [box.to_group(c_img, col_img) for box in bboxes]
-                            groups = merge_groups(groups, cfg.DIST_TOL)
-                            singulator = Singulation(col_img, main_mask, [g.mask for g in groups])
-                            self.run_singulate(singulator, d_img)
-
-                        # return to the position it was in before grasping
-                        # self.ra.go_to_start_pose()
-                        varr = raw_input()
-                        if varr == 'exit':
-                            return
-                        self.ra.robot.open_gripper()
-                        self.ra.robot.omni_base.go_abs(0,0,0,0)
-                        self.ra.robot.whole_body.move_to_joint_positions({'arm_flex_joint': -0.005953039901891888,
-                                                            'arm_lift_joint': 3.5673664703075522e-06,
-                                                            'arm_roll_joint': -1.6400026753088877,
-                                                            'head_pan_joint': 1.59,
-                                                            'head_tilt_joint': -1.15,
-                                                            'wrist_flex_joint': -1.570003402348724,
-                                                            'wrist_roll_joint': 0})
-                        return
-                        self.ra.move_to_start() #probably not required.
-                        self.ra.head_start_pose()
-                    c_img, d_img = self.robot.get_img_data()
-
-    def test(self):
-        c_img = cv2.imread('debug_imgs/web.png')
-        main_mask = crop_img(c_img, simple=True, arc=False, viz=self.viz)
-        col_img = ColorImage(c_img)
-        workspace_img = col_img.mask_binary(main_mask)
-        groups = run_connected_components(workspace_img, viz=self.viz)
-        to_grasp, to_singulate = self.find_grasps(groups, col_img)
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        DEBUG = True
-    else:
-        DEBUG = False
-
-    task = DeclutterDemo(viz=True)
-    task.lego_demo_old()
-    #number_failed = 0
-    #while number_failed <= 2:
-    #    print('Starting new run with %d fails in a row now' %(number_failed))
-    #    task = DeclutterDemo(viz=True)
-    #    # rospy.spin()
-    #    number_failed = task.lego_demo(number_failed)
-    #    del task
-    #print('Nothing to grasp, demo done.')
+    number_failed = 0
+    while number_failed <= 2:
+        print('Starting new run with %d fails in a row now' %(number_failed))
+        task = SurfaceDeclutter()
+        # rospy.spin()
+        task.segment()
+        #number_failed = task.declutter(number_failed)
+        number_failed = 3
+        del task
+    print('No objects in sight, surface decluttered.')
