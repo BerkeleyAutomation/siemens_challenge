@@ -50,33 +50,16 @@ BinaryImage = getattr(img, 'BinaryImage')
 
 
 class SurfaceDeclutter():
-    """
-    This class is for use with the robot
-    Pipeline it tests is labeling all objects in an image using web interface,
-    then choosing between and predicting a singulation or a grasp,
-    then the robot executing the predicted motion
-    ...
 
-    Attributes
-    ----------
-    robot : Robot_Interface
-        low level interface that interacts with primitive HSR kinematics:
-        http://hsr.io/
-    ra : Robot_actions
-        high level declutering task-specific interface that interacts
-        with the HSR_CORE Robot_Interface:
-        https://github.com/BerkeleyAutomation/HSR_CORE
-    """
-
-    def __init__(self, maskrcnn=False):
+    def __init__(self):
         """
         Class that runs surface decluttering task
         """
         self.robot = Robot_Interface()
         self.ra = Robot_Actions(self.robot)
 
-        model_path = 'main/model/sim_then_real_on_real_4objects/output_inference_graph.pb'
-        label_map_path = 'main/model/sim_then_real_on_real_4objects/object-detection.pbtxt'
+        model_path = 'main/model/sim_then_labeled_dann_on_real/output_inference_graph.pb'
+        label_map_path = 'main/model/sim_then_labeled_dann_on_real/object-detection.pbtxt'
         self.det = Detector(model_path, label_map_path)
         self.cam = RGBD()
         self.tfBuffer = tf2_ros.Buffer()
@@ -235,7 +218,7 @@ class SurfaceDeclutter():
             new_file_number = int(last_file_number) + 1
 
         # vis final grasp
-        policy_config['vis']['final_grasp'] = True
+        #policy_config['vis']['final_grasp'] = False
         if policy_config['vis']['final_grasp']:
             vis.figure(size=(40,40))
             vis.subplot(1,2,1)
@@ -250,9 +233,6 @@ class SurfaceDeclutter():
             vis.title('Planned grasp at depth {0:.3f}m with Q={1:.3f}'.format(action.grasp.depth, action.q_value))
             #vis.savefig(TARGET_DIR + 'final_grasp_' + str(new_file_number).zfill(3))
             vis.show()
-
-
-        #self.get_height_line(grasp_center, grasp_angle, d_img)
 
         # execute planned grasp with hsr interface
         #self.execute_gqcnn(grasp_center, grasp_angle, d_img*1000)
@@ -277,24 +257,6 @@ class SurfaceDeclutter():
         self.ra.execute_2DOF_grasp(grasp_center, depth_m, grasp_angle, grasp_width, grasp_height_offset, d_img)
 
     def get_bboxes_from_net(self, img, sess=None):
-        """
-        fetch bounding boxes from the object
-        detection network
-
-        '''
-        Parameters
-        ----------
-        img : the image from the robot for prediction
-        sess : tensorflow session for object recognition
-
-        Returns
-        -------
-        bboxes : []
-            list of Bbox objects labeled by hand
-        vis_util_image : np.array()
-            numpy array format of image
-
-        """
         rgb_image = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         output_dict, vis_util_image = self.det.predict(rgb_image, sess=sess)
         boxes = format_net_bboxes(output_dict, img.shape)
@@ -308,6 +270,8 @@ class SurfaceDeclutter():
 
     def declutter(self, number_failed):
         self.ra.go_to_start_pose()
+        while self.robot.omni_base.is_moving():
+            time.sleep(0.1)
         time.sleep(1)
         c_img, d_img = self.read_RGBD_image()
         # convert depth image from mm to m because dexnet uses m
@@ -356,8 +320,8 @@ if __name__ == "__main__":
         print('Starting new run with %d fails in a row now' %(number_failed))
         task = SurfaceDeclutter()
         # rospy.spin()
-        task.segment()
-        #number_failed = task.declutter(number_failed)
-        number_failed = 3
+        #task.segment()
+        number_failed = task.declutter(number_failed)
+        #number_failed = 3
         del task
     print('No objects in sight, surface decluttered.')

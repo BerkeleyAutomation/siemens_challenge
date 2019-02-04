@@ -366,11 +366,20 @@ class Robot_Actions():
         base_pose = self.robot.omni_base.get_pose()
         if abs(base_pose.pos.x) >= 0.02 or abs(base_pose.pos.y) >= 0.02 or base_pose.ori.w <= 0.95:
             try:
-                self.robot.omni_base.go_abs(0,0,0,0)
+                thread.start_new_thread(self.robot.omni_base.go_abs,(0,0,0,0))
             except:
                 self.robot.omni_base.go_abs(base_pose.pos.x / 2, base_pose.pos.y / 2,0,0)
-                self.robot.omni_base.go_abs(0,0,0,0)
-        self.robot.whole_body.move_to_joint_positions({'arm_flex_joint': -0.005953039901891888,
+                thread.start_new_thread(self.robot.omni_base.go_abs,(0,0,0,0))
+        try:
+            self.robot.whole_body.move_to_joint_positions({'arm_flex_joint': -0.005953039901891888,
+                                        'arm_lift_joint': 3.5673664703075522e-06,
+                                        'arm_roll_joint': -1.6400026753088877,
+                                        'head_pan_joint': 0.24998440577459347,
+                                        'head_tilt_joint': -1.3270548266651048,
+                                        'wrist_flex_joint': -1.570003402348724,
+                                        'wrist_roll_joint': 0})
+        except:
+            self.robot.whole_body.move_to_joint_positions({'arm_flex_joint': -0.005953039901891888,
                                         'arm_lift_joint': 3.5673664703075522e-06,
                                         'arm_roll_joint': -1.6400026753088877,
                                         'head_pan_joint': 0.24998440577459347,
@@ -388,7 +397,7 @@ class Robot_Actions():
         time.sleep(1)
 
     def go_to_drop_pose(self):
-        self.robot.omni_base.go_abs(0,0.2,np.pi/2,0)
+        thread.start_new_thread(self.robot.omni_base.go_abs,(0,0.2,np.pi/2,0))
         self.robot.whole_body.move_to_joint_positions({'arm_flex_joint': -np.pi / 2})
 
     def drop_object(self):
@@ -404,6 +413,20 @@ class Robot_Actions():
         trans = self.tfBuffer.lookup_transform('map', frame_name, rospy.Time())
         pose_transformed = tf2_geometry_msgs.do_transform_pose(pose, trans)
         return pose_transformed
+
+    def get_actual_grasp_center(self, grasp_angle_hsr):
+        rotation_axis_y = 0.079
+        rotation_axis_x = 0.472
+        offset_grasp_to_rotational_axis = 0.0115
+        x = rotation_axis_x - math.cos(grasp_angle_hsr)*offset_grasp_to_rotational_axis
+        y = rotation_axis_y + math.sin(grasp_angle_hsr)*offset_grasp_to_rotational_axis
+        pose = geometry_msgs.msg.PoseStamped()
+        pose.header.stamp = rospy.Time.now()
+        pose.header.frame_id = 'map'
+        pose.pose.position.x = x
+        pose.pose.position.y = y
+        pose.pose.position.z = 0
+        return pose
 
     def compute_z_value(self, desired_grasp_center, grasp_height_offset):
         # z value is the distance between the floor and the middle of the gripper
@@ -460,6 +483,7 @@ class Robot_Actions():
 
     def execute_2DOF_grasp(self, grasp_center, grasp_depth_m, grasp_angle_dexnet, grasp_width, grasp_height_offset, d_img):
         grasp_angle_hsr = self.transform_dexnet_angle(grasp_angle_dexnet)
+        actual_grasp_center = self.get_actual_grasp_center(grasp_angle_hsr)
         # use dummy direction because this function needs one as argument
         dir_vec = [0, 1]
         # img_coords2pose exchanges x and y of grasp center, thus having to give them exchanged
@@ -469,10 +493,8 @@ class Robot_Actions():
         #exit_var = raw_input()
         #if exit_var == 'exit':
         #    return
+        thread.start_new_thread(self.adjust_grasp_center,(desired_grasp_center, actual_grasp_center))
         self.go_to_grasp_pose(grasp_angle_hsr)
-        time.sleep(1)
-        actual_grasp_center = self.get_frame_origin('hand_palm_link')
-        self.adjust_grasp_center(desired_grasp_center, actual_grasp_center)
         z = self.compute_z_value(desired_grasp_center, grasp_height_offset)
         z = self.adjust_z_based_on_grasp_width(z, grasp_width)
         #time.sleep(5)
@@ -484,6 +506,8 @@ class Robot_Actions():
         self.robot.close_gripper()
         if self.check_if_object_grasped():
             self.go_to_drop_pose()
+            while self.robot.omni_base.is_moving():
+                time.sleep(0.1)
             self.drop_object()
 
 
