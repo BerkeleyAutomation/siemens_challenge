@@ -397,7 +397,8 @@ class Robot_Actions():
         except:
             self.robot.omni_base.go_abs(0,0.1,np.pi/4,0)
             self.robot.omni_base.go_abs(0,0.2,np.pi/2,0)
-        self.robot.whole_body.move_to_joint_positions({'arm_flex_joint': -np.pi / 2})
+        self.robot.whole_body.move_to_joint_positions({'arm_flex_joint': -np.pi / 2,
+                                                        'wrist_flex_joint': -np.pi / 2})
 
     def drop_object(self):
         self.robot.open_gripper()
@@ -502,11 +503,10 @@ class Robot_Actions():
         self.robot.whole_body.move_to_joint_positions({'arm_lift_joint': z + 0.3})
         grasp_end = time.time()
         print('Grasping took %.2f seconds' %(grasp_end - grasp_start))
-        self.robot.close_gripper()
+        # This sleep is needed because robot otherwise tests too early when object did not drop yet
+        time.sleep(0.1)
         if self.check_if_object_grasped():
             self.go_to_drop_pose()
-            while self.robot.omni_base.is_moving():
-                time.sleep(0.1)
             self.drop_object()
         drop_end = time.time()
         print('Dropping into bin took %.2f seconds' %(drop_end - grasp_end))

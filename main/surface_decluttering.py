@@ -12,7 +12,6 @@ import math
 import os
 import time
 import json
-from PIL import Image
 
 import importlib
 import matplotlib.pyplot as plt
@@ -59,7 +58,7 @@ class SurfaceDeclutter():
         self.robot = Robot_Interface()
         self.ra = Robot_Actions(self.robot)
 
-        model_path = 'main/model/sim_then_labeled_dann_on_real/output_inference_graph.pb'
+        model_path = 'main/model/object_recognition_100_objects_inference_graph.pb'
         label_map_path = 'main/model/sim_then_labeled_dann_on_real/object-detection.pbtxt'
         self.det = Detector(model_path, label_map_path)
         self.cam = RGBD()
@@ -224,7 +223,7 @@ class SurfaceDeclutter():
         plan_end = time.time()
         print('Planning took %.2f seconds' %(plan_end - plan_start))
         # vis final grasp
-        #policy_config['vis']['final_grasp'] = False
+        policy_config['vis']['final_grasp'] = False
         if policy_config['vis']['final_grasp']:
             vis.figure(size=(40,40))
             vis.subplot(1,2,1)
@@ -272,6 +271,9 @@ class SurfaceDeclutter():
         c_img, d_img = self.robot.get_img_data()
         while (c_img is None or d_img is None):
             c_img, d_img = self.robot.get_img_data()
+        # Crop images to neglect part with robot arm blocking the view
+        d_img[320:,170:] = 0
+        c_img[320:,170:,:] = 0
         return c_img, d_img
 
     def declutter(self, number_failed):
@@ -279,8 +281,6 @@ class SurfaceDeclutter():
         self.ra.go_to_start_pose()
         init_move_end = time.time()
         print('Moving to start pose took %.2f seconds' %(init_move_end - init_move_start))
-        while self.robot.omni_base.is_moving():
-            time.sleep(0.1)
         time.sleep(1)
         c_img, d_img = self.read_RGBD_image()
         # convert depth image from mm to m because dexnet uses m
@@ -292,6 +292,7 @@ class SurfaceDeclutter():
         
     
     def segment(self):
+        self.ra.go_to_start_pose()
         c_img, d_img = self.read_RGBD_image()
         with self.det.detection_graph.as_default():
             with tensorflow.Session() as sess:
@@ -307,6 +308,8 @@ class SurfaceDeclutter():
                 else:
                     rgb_image = cv2.cvtColor(c_img, cv2.COLOR_BGR2RGB)
                     box_viz = draw_boxes(bboxes, rgb_image)
+                    #plt.imshow(box_viz)
+                    #plt.show()
                     return
                     single_objs = find_isolated_objects_by_overlap(bboxes)
                     if len(single_objs) == 0:
