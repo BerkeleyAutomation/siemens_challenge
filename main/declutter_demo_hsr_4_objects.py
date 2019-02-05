@@ -219,10 +219,10 @@ class DeclutterDemo():
 
         
         # query policy
-        policy_start = time.time()
         action = policy(state)
         if action is None:
             return number_failed + 1
+            
         # grasp_center[x,y] in image frame
         grasp_center = [action.grasp.center[0], action.grasp.center[1]]
         grasp_angle = action.grasp.angle

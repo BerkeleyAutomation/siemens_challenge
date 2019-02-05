@@ -52,6 +52,7 @@ BinaryImage = getattr(img, 'BinaryImage')
 class SurfaceDeclutter():
 
     def __init__(self):
+        init_start = time.time()
         """
         Class that runs surface decluttering task
         """
@@ -63,8 +64,11 @@ class SurfaceDeclutter():
         self.det = Detector(model_path, label_map_path)
         self.cam = RGBD()
         self.tfBuffer = tf2_ros.Buffer()
+        init_end = time.time()
+        print('Initialization took %.2f seconds' %(init_end-init_start))
 
     def run_grasp_gqcnn(self, c_img, d_img, number_failed):
+        plan_start = time.time()
         from autolab_core import RigidTransform, YamlConfig, Logger
         from perception import BinaryImage, CameraIntrinsics, ColorImage, DepthImage, RgbdImage
         from visualization import Visualizer2D as vis
@@ -217,6 +221,8 @@ class SurfaceDeclutter():
             last_file_number = last_added_file[-7:-4]
             new_file_number = int(last_file_number) + 1
 
+        plan_end = time.time()
+        print('Planning took %.2f seconds' %(plan_end - plan_start))
         # vis final grasp
         #policy_config['vis']['final_grasp'] = False
         if policy_config['vis']['final_grasp']:
@@ -269,7 +275,10 @@ class SurfaceDeclutter():
         return c_img, d_img
 
     def declutter(self, number_failed):
+        init_move_start = time.time()
         self.ra.go_to_start_pose()
+        init_move_end = time.time()
+        print('Moving to start pose took %.2f seconds' %(init_move_end - init_move_start))
         while self.robot.omni_base.is_moving():
             time.sleep(0.1)
         time.sleep(1)

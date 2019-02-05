@@ -359,27 +359,22 @@ class Robot_Actions():
         base_position_map_frame = self.robot.omni_base.get_pose()
         quaternion_matrix = transformations.quaternion_matrix(base_position_map_frame.ori)
         euler_angles = transformations.euler_from_matrix(quaternion_matrix)
-        self.robot.omni_base.go_abs(base_position_map_frame.pos.x + difference_x, base_position_map_frame.pos.y + difference_y, euler_angles[2], 0)
+        try:
+            self.robot.omni_base.go_abs(base_position_map_frame.pos.x + difference_x, base_position_map_frame.pos.y + difference_y, euler_angles[2], 0)
+        except:
+            self.robot.omni_base.go_abs((base_position_map_frame.pos.x + difference_x) / 2, (base_position_map_frame.pos.y + difference_y) / 2, euler_angles[2], 0)
+            self.robot.omni_base.go_abs(base_position_map_frame.pos.x + difference_x, base_position_map_frame.pos.y + difference_y, euler_angles[2], 0)
         base_position_map_frame = self.robot.omni_base.get_pose()
 
     def go_to_start_pose(self):
         base_pose = self.robot.omni_base.get_pose()
         if abs(base_pose.pos.x) >= 0.02 or abs(base_pose.pos.y) >= 0.02 or base_pose.ori.w <= 0.95:
             try:
-                thread.start_new_thread(self.robot.omni_base.go_abs,(0,0,0,0))
+                self.robot.omni_base.go_abs(0,0,0,0)
             except:
                 self.robot.omni_base.go_abs(base_pose.pos.x / 2, base_pose.pos.y / 2,0,0)
-                thread.start_new_thread(self.robot.omni_base.go_abs,(0,0,0,0))
-        try:
-            self.robot.whole_body.move_to_joint_positions({'arm_flex_joint': -0.005953039901891888,
-                                        'arm_lift_joint': 3.5673664703075522e-06,
-                                        'arm_roll_joint': -1.6400026753088877,
-                                        'head_pan_joint': 0.24998440577459347,
-                                        'head_tilt_joint': -1.3270548266651048,
-                                        'wrist_flex_joint': -1.570003402348724,
-                                        'wrist_roll_joint': 0})
-        except:
-            self.robot.whole_body.move_to_joint_positions({'arm_flex_joint': -0.005953039901891888,
+                self.robot.omni_base.go_abs(0,0,0,0)
+        self.robot.whole_body.move_to_joint_positions({'arm_flex_joint': -0.005953039901891888,
                                         'arm_lift_joint': 3.5673664703075522e-06,
                                         'arm_roll_joint': -1.6400026753088877,
                                         'head_pan_joint': 0.24998440577459347,
@@ -397,7 +392,11 @@ class Robot_Actions():
         time.sleep(1)
 
     def go_to_drop_pose(self):
-        thread.start_new_thread(self.robot.omni_base.go_abs,(0,0.2,np.pi/2,0))
+        try:
+            self.robot.omni_base.go_abs(0,0.2,np.pi/2,0)
+        except:
+            self.robot.omni_base.go_abs(0,0.1,np.pi/4,0)
+            self.robot.omni_base.go_abs(0,0.2,np.pi/2,0)
         self.robot.whole_body.move_to_joint_positions({'arm_flex_joint': -np.pi / 2})
 
     def drop_object(self):
@@ -482,6 +481,7 @@ class Robot_Actions():
 
 
     def execute_2DOF_grasp(self, grasp_center, grasp_depth_m, grasp_angle_dexnet, grasp_width, grasp_height_offset, d_img):
+        grasp_start = time.time()
         grasp_angle_hsr = self.transform_dexnet_angle(grasp_angle_dexnet)
         actual_grasp_center = self.get_actual_grasp_center(grasp_angle_hsr)
         # use dummy direction because this function needs one as argument
@@ -493,22 +493,23 @@ class Robot_Actions():
         #exit_var = raw_input()
         #if exit_var == 'exit':
         #    return
-        thread.start_new_thread(self.adjust_grasp_center,(desired_grasp_center, actual_grasp_center))
+        self.adjust_grasp_center(desired_grasp_center, actual_grasp_center)
         self.go_to_grasp_pose(grasp_angle_hsr)
         z = self.compute_z_value(desired_grasp_center, grasp_height_offset)
         z = self.adjust_z_based_on_grasp_width(z, grasp_width)
-        #time.sleep(5)
         self.robot.whole_body.move_to_joint_positions({'arm_lift_joint': z})
-        #time.sleep(5)
         self.robot.close_gripper()
-        #time.sleep(5)
         self.robot.whole_body.move_to_joint_positions({'arm_lift_joint': z + 0.3})
+        grasp_end = time.time()
+        print('Grasping took %.2f seconds' %(grasp_end - grasp_start))
         self.robot.close_gripper()
         if self.check_if_object_grasped():
             self.go_to_drop_pose()
             while self.robot.omni_base.is_moving():
                 time.sleep(0.1)
             self.drop_object()
+        drop_end = time.time()
+        print('Dropping into bin took %.2f seconds' %(drop_end - grasp_end))
 
 
     def l_singulate(self, cm, dir_vec, d_img):
