@@ -223,7 +223,7 @@ class SurfaceDeclutter():
         plan_end = time.time()
         print('Planning took %.2f seconds' %(plan_end - plan_start))
         # vis final grasp
-        policy_config['vis']['final_grasp'] = False
+        #policy_config['vis']['final_grasp'] = False
         if policy_config['vis']['final_grasp']:
             vis.figure(size=(40,40))
             vis.subplot(1,2,1)
@@ -277,10 +277,7 @@ class SurfaceDeclutter():
         return c_img, d_img
 
     def declutter(self, number_failed):
-        init_move_start = time.time()
         self.ra.go_to_start_pose()
-        init_move_end = time.time()
-        print('Moving to start pose took %.2f seconds' %(init_move_end - init_move_start))
         time.sleep(1)
         c_img, d_img = self.read_RGBD_image()
         # convert depth image from mm to m because dexnet uses m
