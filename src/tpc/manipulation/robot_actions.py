@@ -369,7 +369,7 @@ class Robot_Actions():
         self.robot.whole_body.move_to_joint_positions({'arm_flex_joint': -0.005953039901891888,
                                         'arm_lift_joint': 3.5673664703075522e-06,
                                         'arm_roll_joint': -1.6400026753088877,
-                                        'head_pan_joint': 0.24998440577459347,
+                                        'head_pan_joint': 0,
                                         'head_tilt_joint': -1.3270548266651048,
                                         'wrist_flex_joint': -1.570003402348724,
                                         'wrist_roll_joint': 0})
@@ -480,7 +480,6 @@ class Robot_Actions():
         # img_coords2pose exchanges x and y of grasp center, thus having to give them exchanged
         grasp_frame_name = self.img_coords2pose([grasp_center[1], grasp_center[0]], dir_vec, d_img, depth=grasp_depth_m*1000)
         desired_grasp_center = self.get_frame_origin(grasp_frame_name)
-        thread.start_new_thread(self.publish_pose,('desired_grasp_pose',desired_grasp_center))
         #exit_var = raw_input()
         #if exit_var == 'exit':
         #    return
@@ -496,7 +495,8 @@ class Robot_Actions():
         # This sleep is needed because robot otherwise tests too early when object did not drop yet
         time.sleep(0.1)
         #if self.check_if_object_grasped():
-        self.go_to_drop_pose()
+        #self.go_to_drop_pose()
+        self.robot.whole_body.move_to_joint_positions({'arm_lift_joint': 0.1})
         self.drop_object()
         drop_end = time.time()
         print('Dropping into bin took %.2f seconds' %(drop_end - grasp_end))
