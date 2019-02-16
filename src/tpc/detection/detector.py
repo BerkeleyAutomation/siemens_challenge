@@ -152,9 +152,7 @@ class Detector():
         end_time = timer.time()
         # print("final time: " + str(end_time - start_time))
         # Visualization of the results of a detection.
-        thresh = np.amax(output_dict['detection_scores']) - 0.01
-        plt.imshow(image_np)
-        plt.show()
+        thresh = 0.5
         vis_util.visualize_boxes_and_labels_on_image_array(image_np,
                                                            output_dict['detection_boxes'],
                                                            output_dict['detection_classes'],

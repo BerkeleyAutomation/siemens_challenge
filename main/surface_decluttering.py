@@ -60,21 +60,21 @@ class SurfaceDeclutter():
 
         model_path = 'main/model/object_recognition_100_objects_inference_graph.pb'
         label_map_path = 'main/model/sim_then_labeled_dann_on_real/object-detection.pbtxt'
-        #self.det = Detector(model_path, label_map_path)
+        self.det = Detector(model_path, label_map_path)
         self.cam = RGBD()
         self.tfBuffer = tf2_ros.Buffer()
         init_end = time.time()
-        self.TARGET_DIR = '/home/benno/experiments/hsr/gqcnn/dexnet_4_0/'
-        if not os.path.exists(self.TARGET_DIR):
-            os.makedirs(self.TARGET_DIR)
+        #self.TARGET_DIR = '/home/benno/experiments/hsr/gqcnn/dexnet_4_0/'
+        #if not os.path.exists(self.TARGET_DIR):
+        #   os.makedirs(self.TARGET_DIR)
 
-        files_in_TARGET_DIR = [os.path.join(self.TARGET_DIR, filename) for filename in os.listdir(self.TARGET_DIR)]
-        if not files_in_TARGET_DIR:
-            self.new_file_number = 0
-        else:
-            last_added_file = max(files_in_TARGET_DIR, key=os.path.getmtime)
-            last_file_number = last_added_file[-7:-4]
-            self.new_file_number = int(last_file_number) + 1
+        #files_in_TARGET_DIR = [os.path.join(self.TARGET_DIR, filename) for filename in os.listdir(self.TARGET_DIR)]
+        #if not files_in_TARGET_DIR:
+        #    self.new_file_number = 0
+        #else:
+        #    last_added_file = max(files_in_TARGET_DIR, key=os.path.getmtime)
+        #    last_file_number = last_added_file[-7:-4]
+        #    self.new_file_number = int(last_file_number) + 1
         print('Initialization took %.2f seconds' %(init_end-init_start))
 
     def run_grasp_gqcnn(self, c_img, d_img, number_failed):
@@ -157,15 +157,15 @@ class SurfaceDeclutter():
         # inpaint
         depth_im = depth_im.inpaint(rescale_factor=inpaint_rescale_factor)
             
-        vis.figure(size=(10,10))
-        num_plot = 1
-        if segmask is not None:
-            num_plot = 2
-        vis.subplot(1,num_plot,1)
-        vis.imshow(depth_im)
-        vis.subplot(1,num_plot,2)
-        vis.imshow(color_im)
-        vis.savefig(self.TARGET_DIR + 'input_images_' + str(self.new_file_number).zfill(3))
+        #vis.figure(size=(10,10))
+        #num_plot = 1
+        #if segmask is not None:
+        #    num_plot = 2
+        #vis.subplot(1,num_plot,1)
+        #vis.imshow(depth_im)
+        #vis.subplot(1,num_plot,2)
+        #vis.imshow(color_im)
+        #vis.savefig(self.TARGET_DIR + 'input_images_' + str(self.new_file_number).zfill(3))
         #vis.show()
             
         # create state
@@ -233,9 +233,9 @@ class SurfaceDeclutter():
             vis.imshow(rgbd_im.color)
             vis.grasp(action.grasp, scale=2.5, show_center=False, show_axis=True)
             vis.title('Planned grasp at depth {0:.3f}m with Q={1:.3f}'.format(action.grasp.depth, action.q_value))
-            vis.savefig(self.TARGET_DIR + 'final_grasp_' + str(self.new_file_number).zfill(3))
+            #vis.savefig(self.TARGET_DIR + 'final_grasp_' + str(self.new_file_number).zfill(3))
             vis.show()
-        self.new_file_number += 1
+        #self.new_file_number += 1
 
         # execute planned grasp with hsr interface
         #self.execute_gqcnn(grasp_center, grasp_angle, d_img*1000)
@@ -244,178 +244,15 @@ class SurfaceDeclutter():
         self.execute_gqcnn_2DOF(grasp_center, grasp_depth_m, grasp_angle, grasp_width, grasp_height_offset, d_img*1000)
         return 0
 
-    def run_grasp_gqcnn4(self, c_img, d_img, number_failed):
-        plan_start = time.time()
-        from autolab_core import RigidTransform, YamlConfig, Logger
-        from perception import BinaryImage, CameraIntrinsics, ColorImage, DepthImage, RgbdImage
-        from visualization import Visualizer2D as vis
 
-        from gqcnn.grasping import RobustGraspingPolicy, CrossEntropyRobustGraspingPolicy, RgbdImageState, FullyConvolutionalGraspingPolicyParallelJaw, FullyConvolutionalGraspingPolicySuction
-        from gqcnn.utils import GripperMode, NoValidGraspsException
 
-        segmask_filename = None
-        camera_intr_filename = None
-        model_dir = None
-        config_filename = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                                '..',
-                                                '..',
-                                                'gqcnn/cfg/examples/dex-net_4.0.yaml')
-        fully_conv = None
-
-        assert not (fully_conv and depth_im_filename is not None and segmask_filename is None), 'Fully-Convolutional policy expects a segmask.'
-
-        if fully_conv and segmask_filename is None:
-            segmask_filename = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                                '..',
-                                                '..',
-                                                'gqcnn/data/examples/clutter/primesense/segmask_0.png')
-        if camera_intr_filename is None:
-            camera_intr_filename = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                                '..',
-                                                '..',
-                                                'gqcnn/data/calib/primesense/primesense.intr')    
-        if config_filename is None:
-            if fully_conv:
-                config_filename = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                                '..',
-                                                '..',
-                                                'gqcnn/cfg/examples/fc_policy.yaml')
-            else:
-                config_filename = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                                '..',
-                                                '..',
-                                                'gqcnn/cfg/examples/policy.yaml')
-       
-        # read config
-        config = YamlConfig(config_filename)
-        inpaint_rescale_factor = config['inpaint_rescale_factor']
-        policy_config = config['policy']
-
-        # set model if provided and make relative paths absolute
-        if model_dir is not None:
-            policy_config['metric']['gqcnn_model'] = model_dir
-        if 'gqcnn_model' in policy_config['metric'].keys() and not os.path.isabs(policy_config['metric']['gqcnn_model']):
-            policy_config['metric']['gqcnn_model'] = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                                                  '..',
-                                                                  '../gqcnn',
-                                                                  policy_config['metric']['gqcnn_model'])
-
-        # setup sensor
-        camera_intr = CameraIntrinsics.load(camera_intr_filename)
-            
-        # read images
-        depth_im = DepthImage(d_img, frame=camera_intr.frame)
-        rgb_img = np.asarray(c_img)
-        color_im = ColorImage(rgb_img,
-                                frame=camera_intr.frame, encoding='rgb8')
-        color_im = color_im.rgb2bgr()
-
-        
-        # optionally read a segmask
-        segmask = None
-        if segmask_filename is not None:
-            segmask = BinaryImage.open(segmask_filename)
-        valid_px_mask = depth_im.invalid_pixel_mask().inverse()
-        if segmask is None:
-            segmask = valid_px_mask
-        else:
-            segmask = segmask.mask_binary(valid_px_mask)
-        
-        # inpaint
-        depth_im = depth_im.inpaint(rescale_factor=inpaint_rescale_factor)
-            
-        vis.figure(size=(10,10))
-        num_plot = 1
-        if segmask is not None:
-            num_plot = 2
-        vis.subplot(1,num_plot,1)
-        vis.imshow(depth_im)
-        vis.subplot(1,num_plot,2)
-        vis.imshow(color_im)
-        vis.savefig(self.TARGET_DIR + 'input_images_' + str(self.new_file_number).zfill(3))
-        #vis.show()
-            
-        # create state
-        rgbd_im = RgbdImage.from_color_and_depth(color_im, depth_im)
-        state = RgbdImageState(rgbd_im, camera_intr, segmask=segmask)
-
-        # set input sizes for fully-convolutional policy
-        if fully_conv:
-            policy_config['metric']['fully_conv_gqcnn_config']['im_height'] = depth_im.shape[0]
-            policy_config['metric']['fully_conv_gqcnn_config']['im_width'] = depth_im.shape[1]
-
-        # init policy
-        if fully_conv:
-            #TODO: @Vishal we should really be doing this in some factory policy
-            if policy_config['type'] == 'fully_conv_suction':
-                policy = FullyConvolutionalGraspingPolicySuction(policy_config)
-            elif policy_config['type'] == 'fully_conv_pj':
-                policy = FullyConvolutionalGraspingPolicyParallelJaw(policy_config)
-            else:
-                raise ValueError('Invalid fully-convolutional policy type: {}'.format(policy_config['type']))
-        else:
-            policy_type = 'cem'
-            if 'type' in policy_config.keys():
-                policy_type = policy_config['type']
-            if policy_type == 'ranking':
-                policy = RobustGraspingPolicy(policy_config)
-            elif policy_type == 'cem':
-                policy = CrossEntropyRobustGraspingPolicy(policy_config)
-            else:
-                raise ValueError('Invalid policy type: {}'.format(policy_type))
-
-        
-        # query policy
-        policy_start = time.time()
-        action = policy(state)
-        if action is None:
-            return number_failed + 1
-        # grasp_center[x,y] in image frame
-        grasp_center = [action.grasp.center[0], action.grasp.center[1]]
-        grasp_angle = action.grasp.angle
-        grasp_depth_m = action.grasp.depth
-        grasp_height_offset = action.grasp.height_offset
-        grasp_width = action.grasp.width
-
-        # ignore corrupted depth images
-        if 0.7 < grasp_depth_m < 1.05:
-            pass
-        else:
-            print('invalid depth image')
-            return number_failed + 1
-
-        plan_end = time.time()
-        print('Planning took %.2f seconds' %(plan_end - plan_start))
-        # vis final grasp
-        #policy_config['vis']['final_grasp'] = False
-        if policy_config['vis']['final_grasp']:
-            vis.figure(size=(40,40))
-            vis.subplot(1,2,1)
-            vis.imshow(rgbd_im.depth,
-                       vmin=policy_config['vis']['vmin'],
-                       vmax=policy_config['vis']['vmax'])
-            vis.grasp(action.grasp, scale=2.5, show_center=False, show_axis=True)
-            vis.title('Planned grasp at depth {0:.3f}m with Q={1:.3f}'.format(action.grasp.depth, action.q_value))
-            vis.subplot(1,2,2)
-            vis.imshow(rgbd_im.color)
-            vis.grasp(action.grasp, scale=2.5, show_center=False, show_axis=True)
-            vis.title('Planned grasp at depth {0:.3f}m with Q={1:.3f}'.format(action.grasp.depth, action.q_value))
-            vis.savefig(self.TARGET_DIR + 'final_grasp_' + str(self.new_file_number).zfill(3))
-            vis.show()
-        self.new_file_number += 1
-
-        # execute planned grasp with hsr interface
-        #self.execute_gqcnn(grasp_center, grasp_angle, d_img*1000)
-
-        # execute 2DOF grasp
-        self.execute_gqcnn_2DOF(grasp_center, grasp_depth_m, grasp_angle, 0.1, 0, d_img*1000)
-        return 0
-
-    def focus_on_target_zone(self, d_img):
-        d_img[:, :245] = 0
-        d_img[:, 420:] = 0
-        d_img[:150, :] = 0
-        d_img[310:, :] = 0
+    def focus_on_target_zone(self, d_img, bbox):
+        d_img[:, :bbox.xmin] = 0
+        d_img[:, bbox.xmax:] = 0
+        d_img[:bbox.ymin, :] = 0
+        d_img[bbox.ymax:, :] = 0
+        plt.imshow(d_img)
+        plt.show()
         return d_img
 
     def execute_gqcnn(self, grasp_center, grasp_angle, depth_image_mm):
@@ -448,7 +285,7 @@ class SurfaceDeclutter():
         # convert depth image from mm to m because dexnet uses m
         depth_image_mm = np.asarray(d_img[:,:])
         depth_image_m = depth_image_mm/1000
-        number_failed = self.run_grasp_gqcnn4(c_img, depth_image_m, number_failed)
+        number_failed = self.run_grasp_gqcnn(c_img, depth_image_m, number_failed)
         return number_failed
         
     
@@ -463,11 +300,27 @@ class SurfaceDeclutter():
                 workspace_img = col_img.mask_binary(main_mask)
 
                 bboxes, vis_util_image = self.get_bboxes_from_net(c_img, sess=sess)
+                bboxes = [bbox for bbox in bboxes if bbox.prob > 0.5]
                 if len(bboxes) == 0:
                     print("Cleared the workspace")
                     print("Add more objects, then resume")
                     return
                 else:
+                    y_max = 0
+                    for bbox in bboxes:
+                        if bbox.ymax >= y_max:
+                            y_max = bbox.ymax
+                            target_bbox = bbox
+                    rgb_image = cv2.cvtColor(c_img, cv2.COLOR_BGR2RGB)
+                    show_target_img = bbox.draw(rgb_image)
+
+                    d_img = self.focus_on_target_zone(d_img, target_bbox)
+
+
+
+
+
+
                     rgb_image = cv2.cvtColor(c_img, cv2.COLOR_BGR2RGB)
                     box_viz = draw_boxes(bboxes, rgb_image)
                     #plt.imshow(box_viz)
@@ -494,8 +347,8 @@ if __name__ == "__main__":
         print('Starting new run with %d fails in a row now' %(number_failed))
         task = SurfaceDeclutter()
         # rospy.spin()
-        #task.segment()
-        number_failed = task.declutter(number_failed)
+        task.segment()
+        #number_failed = task.declutter(number_failed)
         number_failed = 3
         del task
     print('No objects in sight, surface decluttered.')
