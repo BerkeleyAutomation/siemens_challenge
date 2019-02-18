@@ -152,7 +152,8 @@ class Detector():
         end_time = timer.time()
         # print("final time: " + str(end_time - start_time))
         # Visualization of the results of a detection.
-        thresh = 0.5
+        thresh = 0.6
+        print('output dict %i' %(len(output_dict['detection_boxes'])))
         vis_util.visualize_boxes_and_labels_on_image_array(image_np,
                                                            output_dict['detection_boxes'],
                                                            output_dict['detection_classes'],

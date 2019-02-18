@@ -81,16 +81,13 @@ def format_net_bboxes(net_output, shape, maskrcnn=False):
     while num_valid < len(scores) and scores[num_valid] > cfg.CONFIDENCE_THRESH:
         num_valid += 1
     filtered_output = []
-
     for i in range(num_valid):
         points = [boxes[i][1], boxes[i][0], boxes[i][3], boxes[i][2]]
         box = Bbox(points, classes[i], scores[i])
         if not maskrcnn:
             box.scale_from_net(shape)
         box.convert_label_from_net()
-        to_add = box.filter_far_boxes()
-        if to_add:
-            filtered_output.append(box)
+        filtered_output.append(box)
 
     return filtered_output
 

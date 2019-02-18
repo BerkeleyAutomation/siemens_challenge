@@ -58,8 +58,9 @@ class SurfaceDeclutter():
         self.robot = Robot_Interface()
         self.ra = Robot_Actions(self.robot)
 
-        model_path = 'main/model/object_recognition_100_objects_inference_graph.pb'
+        model_path = '/nfs/diskstation/ajaytanwani/trained_models/real_hsr_5_objects/output_inference_graph.pb'
         label_map_path = 'main/model/sim_then_labeled_dann_on_real/object-detection.pbtxt'
+        self.labels = { 0: 'Tool', 1: 'Scrap', 2: 'Tube', 3: 'Box', 4: 'Plastic'}
         self.det = Detector(model_path, label_map_path)
         self.cam = RGBD()
         self.tfBuffer = tf2_ros.Buffer()
@@ -77,7 +78,7 @@ class SurfaceDeclutter():
         #    self.new_file_number = int(last_file_number) + 1
         print('Initialization took %.2f seconds' %(init_end-init_start))
 
-    def run_grasp_gqcnn(self, c_img, d_img, number_failed):
+    def run_grasp_gqcnn(self, c_img, d_img, number_failed, object_label):
         plan_start = time.time()
         from autolab_core import RigidTransform, YamlConfig, Logger
         from perception import BinaryImage, CameraIntrinsics, ColorImage, DepthImage, RgbdImage
@@ -241,7 +242,7 @@ class SurfaceDeclutter():
         #self.execute_gqcnn(grasp_center, grasp_angle, d_img*1000)
 
         # execute 2DOF grasp
-        self.execute_gqcnn_2DOF(grasp_center, grasp_depth_m, grasp_angle, grasp_width, grasp_height_offset, d_img*1000)
+        self.execute_gqcnn_2DOF(grasp_center, grasp_depth_m, grasp_angle, grasp_width, grasp_height_offset, d_img*1000, object_label)
         return 0
 
 
@@ -260,8 +261,8 @@ class SurfaceDeclutter():
         grasp_direction_normalized = grasp_direction / np.linalg.norm(grasp_direction)
         self.ra.execute_grasp(grasp_center, grasp_direction_normalized, depth_image_mm, 0, 500.0)
 
-    def execute_gqcnn_2DOF(self, grasp_center, depth_m, grasp_angle, grasp_width, grasp_height_offset, d_img):
-        self.ra.execute_2DOF_grasp(grasp_center, depth_m, grasp_angle, grasp_width, grasp_height_offset, d_img)
+    def execute_gqcnn_2DOF(self, grasp_center, depth_m, grasp_angle, grasp_width, grasp_height_offset, d_img, object_label):
+        self.ra.execute_2DOF_grasp(grasp_center, depth_m, grasp_angle, grasp_width, grasp_height_offset, d_img, object_label)
 
     def get_bboxes_from_net(self, img, sess=None):
         rgb_image = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -289,10 +290,13 @@ class SurfaceDeclutter():
         return number_failed
         
     
-    def segment(self):
+    def segment(self, number_failed):
         self.ra.go_to_start_pose()
-        time.sleep(0.1)
+        time.sleep(2)
         c_img, d_img = self.read_RGBD_image()
+        plt.imshow(c_img)
+        plt.show()
+        return 3
         with self.det.detection_graph.as_default():
             with tensorflow.Session() as sess:
                 main_mask = crop_img(c_img, simple=True, arc=False)
@@ -300,43 +304,32 @@ class SurfaceDeclutter():
                 workspace_img = col_img.mask_binary(main_mask)
 
                 bboxes, vis_util_image = self.get_bboxes_from_net(c_img, sess=sess)
-                bboxes = [bbox for bbox in bboxes if bbox.prob > 0.5]
+                bboxes = [bbox for bbox in bboxes if bbox.prob > 0.6]
                 if len(bboxes) == 0:
                     print("Cleared the workspace")
                     print("Add more objects, then resume")
-                    return
+                    return 3
                 else:
                     y_max = 0
                     for bbox in bboxes:
                         if bbox.ymax >= y_max:
                             y_max = bbox.ymax
                             target_bbox = bbox
+                    max_prob = target_bbox.prob
+                    for bbox in bboxes:
+                        if bbox.ymax > y_max - 50 and bbox.prob > max_prob:
+                            max_prob = bbox.prob
+                            target_bbox = bbox
                     rgb_image = cv2.cvtColor(c_img, cv2.COLOR_BGR2RGB)
-                    show_target_img = bbox.draw(rgb_image)
-
+                    rgb_image = target_bbox.draw(rgb_image)
+                    plt.imshow(rgb_image)
+                    plt.show()
+                    return 3
                     d_img = self.focus_on_target_zone(d_img, target_bbox)
-
-
-
-
-
-
-                    rgb_image = cv2.cvtColor(c_img, cv2.COLOR_BGR2RGB)
-                    box_viz = draw_boxes(bboxes, rgb_image)
-                    #plt.imshow(box_viz)
-                    #plt.show()
-                    return
-                    single_objs = find_isolated_objects_by_overlap(bboxes)
-                    if len(single_objs) == 0:
-                        single_objs = [bboxes[0]]
-
-                    if len(single_objs) > 0:
-                        pass
-                    else:
-                        groups = [box.to_group(c_img, col_img) for box in bboxes]
-                        groups = merge_groups(groups, cfg.DIST_TOL)
-                        singulator = Singulation(col_img, main_mask, [g.mask for g in groups])
-                        self.run_singulate(singulator, d_img)
+                    depth_image_mm = np.asarray(d_img[:,:])
+                    depth_image_m = depth_image_mm/1000
+                    number_failed = self.run_grasp_gqcnn(c_img, depth_image_m, number_failed, target_bbox.label)
+                    return number_failed
 
 
 
@@ -344,11 +337,11 @@ class SurfaceDeclutter():
 if __name__ == "__main__":
     number_failed = 0
     while number_failed <= 2:
-        print('Starting new run with %d fails in a row now' %(number_failed))
+    #    print('Starting new run with %d fails in a row now' %(number_failed))
         task = SurfaceDeclutter()
         # rospy.spin()
-        task.segment()
+        number_failed = task.segment(number_failed)
         #number_failed = task.declutter(number_failed)
-        number_failed = 3
+    #    number_failed = 3
         del task
     print('No objects in sight, surface decluttered.')

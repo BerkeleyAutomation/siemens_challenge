@@ -385,12 +385,9 @@ class Robot_Actions():
                                         'wrist_roll_joint': grasp_angle_hsr})
         time.sleep(1)
 
-    def go_to_drop_pose(self):
-        self.move_base(0,-0.4,-np.pi/2)
-        self.robot.whole_body.move_to_joint_positions({'arm_flex_joint': -np.pi / 2,
-                                                        'wrist_flex_joint': -np.pi / 2})
 
-    def drop_object(self):
+    def drop_object_in_bin(self, object_label):
+        self.move_base(0,object_label * 0.22 - 0.44, np.pi)
         self.robot.open_gripper()
 
     def get_frame_origin(self, frame_name):
@@ -471,7 +468,8 @@ class Robot_Actions():
         return euclidean_distance >= 0.035
 
 
-    def execute_2DOF_grasp(self, grasp_center, grasp_depth_m, grasp_angle_dexnet, grasp_width, grasp_height_offset, d_img):
+    def execute_2DOF_grasp(self, grasp_center, grasp_depth_m, grasp_angle_dexnet, grasp_width, grasp_height_offset, d_img, object_label):
+        print('Executing decluttering for object in class %i' %(object_label))
         grasp_start = time.time()
         grasp_angle_hsr = self.transform_dexnet_angle(grasp_angle_dexnet)
         actual_grasp_center = self.get_actual_grasp_center(grasp_angle_hsr)
@@ -492,12 +490,7 @@ class Robot_Actions():
         self.robot.whole_body.move_to_joint_positions({'arm_lift_joint': z + 0.3})
         grasp_end = time.time()
         print('Grasping took %.2f seconds' %(grasp_end - grasp_start))
-        # This sleep is needed because robot otherwise tests too early when object did not drop yet
-        time.sleep(0.1)
-        #if self.check_if_object_grasped():
-        #self.go_to_drop_pose()
-        self.robot.whole_body.move_to_joint_positions({'arm_lift_joint': 0.1})
-        self.drop_object()
+        self.drop_object_in_bin(object_label)
         drop_end = time.time()
         print('Dropping into bin took %.2f seconds' %(drop_end - grasp_end))
         self.go_to_start_pose()
