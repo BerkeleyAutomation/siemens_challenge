@@ -8,6 +8,9 @@ from copy import deepcopy
 import sys
 import thread
 import tf
+import math
+import os
+import time
 
 import importlib
 import matplotlib.pyplot as plt
@@ -29,7 +32,15 @@ import tensorflow
 from tpc.detection.detector import Detector
 
 
-from core.hsr_robot_interface import Robot_Interface
+from hsr_core.hsr_robot_interface import Robot_Interface
+
+from hsr_core.sensors import RGBD
+
+import tf2_ros
+
+import geometry_msgs
+
+
 
 img = importlib.import_module(cfg.IMG_MODULE)
 ColorImage = getattr(img, 'ColorImage')

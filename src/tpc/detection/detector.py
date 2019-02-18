@@ -176,6 +176,7 @@ class Detector():
 
         plt.figure(figsize=IMAGE_SIZE)
         plt.imshow(image_np)
+        #plt.show()
 
         return output_dict, image_np
 
