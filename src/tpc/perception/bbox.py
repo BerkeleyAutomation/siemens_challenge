@@ -88,9 +88,10 @@ def format_net_bboxes(net_output, shape, maskrcnn=False):
         if not maskrcnn:
             box.scale_from_net(shape)
         box.convert_label_from_net()
-        to_add = box.filter_far_boxes()
-        if to_add:
-            filtered_output.append(box)
+        filtered_output.append(box)
+        #to_add = box.filter_far_boxes()
+        #if to_add:
+            #filtered_output.append(box)
 
     return filtered_output
 

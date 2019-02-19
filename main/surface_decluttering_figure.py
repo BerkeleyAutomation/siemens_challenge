@@ -40,6 +40,7 @@ from hsr_core.sensors import RGBD
 import tf2_ros
 
 import geometry_msgs
+from visualization import Visualizer2D as vis
 
 
 
@@ -59,7 +60,8 @@ class SurfaceDeclutter():
         self.ra = Robot_Actions(self.robot)
 
         # model_path = 'main/model/object_recognition_100_objects_inference_graph.pb'
-        model_path = 'main/model/real_on_real/output_inference_graph.pb'
+        # model_path = 'main/model/real_on_real/output_inference_graph.pb'
+        model_path = '/nfs/diskstation/ajaytanwani/trained_models/real_on_real_hsr_100_objects/output_inference_graph.pb'
         label_map_path = 'main/model/real_on_real/object-detection.pbtxt'
         self.det = Detector(model_path, label_map_path)
         self.cam = RGBD()
@@ -71,7 +73,6 @@ class SurfaceDeclutter():
         plan_start = time.time()
         from autolab_core import RigidTransform, YamlConfig, Logger
         from perception import BinaryImage, CameraIntrinsics, ColorImage, DepthImage, RgbdImage
-        from visualization import Visualizer2D as vis
 
         from gqcnn.grasping import RobustGraspingPolicy, CrossEntropyRobustGraspingPolicy, RgbdImageState, FullyConvolutionalGraspingPolicyParallelJaw, FullyConvolutionalGraspingPolicySuction
         from gqcnn.utils import GripperMode, NoValidGraspsException
@@ -188,7 +189,7 @@ class SurfaceDeclutter():
             else:
                 raise ValueError('Invalid policy type: {}'.format(policy_type))
 
-        
+        # import ipdb; ipdb.set_trace()
         # query policy
         policy_start = time.time()
         action = policy(state)
@@ -226,28 +227,30 @@ class SurfaceDeclutter():
         print('Planning took %.2f seconds' %(plan_end - plan_start))
         # vis final grasp
         #policy_config['vis']['final_grasp'] = False
-        if policy_config['vis']['final_grasp']:
+        if policy_config['vis']['final_grasp'] and False:
             vis.figure(size=(40,40))
             vis.subplot(1,2,1)
             vis.imshow(rgbd_im.depth,
                        vmin=policy_config['vis']['vmin'],
                        vmax=policy_config['vis']['vmax'])
-            vis.grasp(action.grasp, scale=2.5, show_center=False, show_axis=True)
+            vis.grasp(action.grasp, scale=4.5, show_center=False, show_axis=True)
             vis.title('Planned grasp at depth {0:.3f}m with Q={1:.3f}'.format(action.grasp.depth, action.q_value))
+
             vis.subplot(1,2,2)
             vis.imshow(rgbd_im.color)
-            vis.grasp(action.grasp, scale=2.5, show_center=False, show_axis=True)
+            vis.grasp(action.grasp, scale=4.5, show_center=True, show_axis=True)
             vis.title('Planned grasp at depth {0:.3f}m with Q={1:.3f}'.format(action.grasp.depth, action.q_value))
-            #vis.savefig(TARGET_DIR + 'final_grasp_' + str(new_file_number).zfill(3))
+            vis.savefig(TARGET_DIR + 'final_grasp_' + str(new_file_number).zfill(3))
             vis.show()
 
         # execute planned grasp with hsr interface
         #self.execute_gqcnn(grasp_center, grasp_angle, d_img*1000)
 
-        # execute 2DOF grasp
-        self.execute_gqcnn_2DOF(grasp_center, grasp_depth_m, grasp_angle, grasp_width, grasp_height_offset, d_img*1000, object_label)
-        return 0
 
+        # execute 2DOF grasp
+        # self.execute_gqcnn_2DOF(grasp_center, grasp_depth_m, grasp_angle, grasp_width, grasp_height_offset, d_img*1000, object_label)
+        # return 0
+        return action
 
 
     def focus_on_target_zone(self, d_img, bbox):
@@ -294,12 +297,18 @@ class SurfaceDeclutter():
         return number_failed
         
     
-    def segment(self, number_failed):
-        self.ra.go_to_start_pose()
-        time.sleep(2)
-        c_img, d_img = self.read_RGBD_image()
-        plt.imshow(c_img)
-        plt.show()
+    def segment(self, c_img_filename, d_img_filename):
+
+        c_img = cv2.imread(c_img_filename)
+
+        d_img = np.load(d_img_filename)
+
+
+        # self.ra.go_to_start_pose()
+        # time.sleep(2)
+        # c_img, d_img = self.read_RGBD_image()
+        # plt.imshow(c_img)
+        # plt.show()
         # return 3
         with self.det.detection_graph.as_default():
             with tensorflow.Session() as sess:
@@ -309,41 +318,78 @@ class SurfaceDeclutter():
 
                 bboxes, vis_util_image = self.get_bboxes_from_net(c_img, sess=sess)
                 bboxes = [bbox for bbox in bboxes if bbox.prob > 0.6]
-                if len(bboxes) == 0:
-                    print("Cleared the workspace")
-                    print("Add more objects, then resume")
-                    return 3
-                else:
-                    y_max = 0
-                    for bbox in bboxes:
-                        if bbox.ymax >= y_max:
-                            y_max = bbox.ymax
-                            target_bbox = bbox
-                    max_prob = target_bbox.prob
-                    for bbox in bboxes:
-                        if bbox.ymax > y_max - 50 and bbox.prob > max_prob:
-                            max_prob = bbox.prob
-                            target_bbox = bbox
-                    rgb_image = cv2.cvtColor(c_img, cv2.COLOR_BGR2RGB)
-                    rgb_image = target_bbox.draw(rgb_image)
-                    plt.imshow(rgb_image)
-                    plt.show()
-                    return 3
-                    d_img = self.focus_on_target_zone(d_img, target_bbox)
-                    depth_image_mm = np.asarray(d_img[:,:])
-                    depth_image_m = depth_image_mm/1000
-                    number_failed = self.run_grasp_gqcnn(c_img, depth_image_m, number_failed, target_bbox.label)
-                    return number_failed
+
+                vis_util_image_rgb = cv2.cvtColor(vis_util_image, cv2.COLOR_BGR2RGB)
+                cv2.imwrite(c_img_filename + "_obj_det" + ".png", vis_util_image_rgb)
+
+                actions_list = []
+                for target_id, target_bbox in enumerate(bboxes):
+                    d_img_mask = self.focus_on_target_zone(d_img, target_bbox)
+                    depth_image_m = np.asarray(d_img_mask[:,:])
+                    # depth_image_m = depth_image_mm/1000
+                    # import ipdb; ipdb.set_trace()
+                    action = self.run_grasp_gqcnn(vis_util_image_rgb, depth_image_m, 0, target_bbox.label)
+                    actions_list.append(action)
+                    import ipdb; ipdb.set_trace()
+                    print (target_id,target_bbox.label)
+
+                vis.imshow(col_img)
+                vis.grasp(action.grasp, scale=4.5, show_center=True, show_axis=True)
+                vis.title('Planned grasp at depth {0:.3f}m with Q={1:.3f}'.format(action.grasp.depth, action.q_value))
+                # vis.savefig(TARGET_DIR + 'final_grasp_' + str(new_file_number).zfill(3))
+                vis.show()
+
+                    # return number_failed
+
+                # if len(bboxes) == 0:
+                #     print("Cleared the workspace")
+                #     print("Add more objects, then resume")
+                #     return 3
+                # else:
+                #     y_max = 0
+                #     for bbox in bboxes:
+                #         if bbox.ymax >= y_max:
+                #             y_max = bbox.ymax
+                #             target_bbox = bbox
+                #     max_prob = target_bbox.prob
+                #     for bbox in bboxes:
+                #         if bbox.ymax > y_max - 50 and bbox.prob > max_prob:
+                #             max_prob = bbox.prob
+                #             target_bbox = bbox
+                #     # rgb_image = cv2.cvtColor(c_img, cv2.COLOR_BGR2RGB)
+                #     # rgb_image = target_bbox.draw(rgb_image)
+                #     # plt.imshow(rgb_image)
+                #     # plt.show()
+                #     vis_util_image_rgb = cv2.cvtColor(vis_util_image, cv2.COLOR_BGR2RGB)
+                #     cv2.imwrite(c_img_filename + "_obj_det" +".png", vis_util_image_rgb)
+                #     # return 3
+                #     d_img = self.focus_on_target_zone(d_img, target_bbox)
+                #     depth_image_m = np.asarray(d_img[:,:])
+                #     # depth_image_m = depth_image_mm/1000
+                #     import ipdb; ipdb.set_trace()
+                #     number_failed = self.run_grasp_gqcnn(vis_util_image_rgb, depth_image_m, 0, target_bbox.label)
+                #     return number_failed
 
 
 if __name__ == "__main__":
-    number_failed = 0
-    while number_failed <= 2:
-        print('Starting new run with %d fails in a row now' %(number_failed))
+
+    for iter in xrange(3,4):
+        depth_im_filename = os.path.join('hsr_test/depth_raw_' + str(iter).zfill(4) + '.npy')
+        rgb_im_filename = os.path.join('hsr_test/rgb_raw_' + str(iter).zfill(4) + '.png')
+
         task = SurfaceDeclutter()
-        # rospy.spin()
-        number_failed = task.segment(number_failed)
-        #number_failed = task.declutter(number_failed)
-    #    number_failed = 3
+
+        number_failed = task.segment(rgb_im_filename, depth_im_filename)
+
         del task
-    print('No objects in sight, surface decluttered.')
+
+
+    # while number_failed <= 2:
+    #     print('Starting new run with %d fails in a row now' %(number_failed))
+    #     task = SurfaceDeclutter()
+    #     # rospy.spin()
+    #     number_failed = task.segment(number_failed)
+    #     #number_failed = task.declutter(number_failed)
+    # #    number_failed = 3
+    #     del task
+    # print('No objects in sight, surface decluttered.')
