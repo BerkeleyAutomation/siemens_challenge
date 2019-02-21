@@ -309,13 +309,14 @@ class SurfaceDeclutter():
         d_img_focused = self.focus_on_target_zone(d_img, target_bbox)
         depth_image_mm = np.asarray(d_img_focused[:,:])
         depth_image_m = depth_image_mm/1000
-        #immg = target_bbox.draw(c_img)
-        #plt.figure()
-        #plt.subplot(1,2,1)
-        #plt.imshow(immg)
-        #plt.subplot(1,2,2)
-        #plt.imshow(d_img_focused)
-        #plt.show()
+        immg = target_bbox.draw(c_img)
+        plt.figure()
+        plt.subplot(1,2,1)
+        plt.imshow(immg)
+        plt.subplot(1,2,2)
+        plt.imshow(d_img_focused)
+        plt.savefig(self.TARGET_DIR + 'target_bbox_' + str(self.new_file_number).zfill(3))
+        plt.close()
         grasp_found = self.run_grasp_gqcnn(c_img, depth_image_m, target_bbox.label)
         return grasp_found, target_bbox
         
