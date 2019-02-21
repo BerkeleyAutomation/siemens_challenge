@@ -371,7 +371,7 @@ class Robot_Actions():
     def go_to_start_pose(self):
         base_pose = self.robot.omni_base.get_pose()
         if abs(base_pose.pos.x) >= 0.02 or abs(base_pose.pos.y) >= 0.02 or base_pose.ori.w <= 0.95:
-            self.move_base(0,0,0, start=True)
+            self.move_base(0.05,-0.08,0, start=True)
         self.robot.whole_body.move_to_joint_positions({'arm_flex_joint': -0.005953039901891888,
                                         'arm_lift_joint': 3.5673664703075522e-06,
                                         'arm_roll_joint': -1.6400026753088877,
@@ -413,11 +413,13 @@ class Robot_Actions():
         y = rotation_axis_y + math.sin(grasp_angle_hsr)*offset_grasp_to_rotational_axis
         pose = geometry_msgs.msg.PoseStamped()
         pose.header.stamp = rospy.Time.now()
-        pose.header.frame_id = 'map'
+        pose.header.frame_id = 'base_link'
         pose.pose.position.x = x
         pose.pose.position.y = y
         pose.pose.position.z = 0
-        return pose
+        trans = self.tfBuffer.lookup_transform('map', 'base_link', rospy.Time())
+        pose_transformed = tf2_geometry_msgs.do_transform_pose(pose, trans)
+        return pose_transformed
 
     def compute_z_value(self, desired_grasp_center, grasp_height_offset):
         # z value is the distance between the floor and the middle of the gripper
