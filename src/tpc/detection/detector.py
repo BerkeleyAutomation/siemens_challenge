@@ -134,7 +134,7 @@ class Detector():
         self.run_inference_for_single_image = run_inference_for_single_image
         self.run_inference_for_single_image_optimized = run_inference_for_single_image_optimized
 
-    def predict(self, image_np, thresh=.5, sess=None):
+    def predict(self, image_np, thresh=.5, sess=None, file_number=None):
         # image = Image.open(image_path)
         IMAGE_SIZE = (6, 4)
 
@@ -153,7 +153,6 @@ class Detector():
         # print("final time: " + str(end_time - start_time))
         # Visualization of the results of a detection.
         thresh = 0.6
-        print('output dict %i' %(len(output_dict['detection_boxes'])))
         vis_util.visualize_boxes_and_labels_on_image_array(image_np,
                                                            output_dict['detection_boxes'],
                                                            output_dict['detection_classes'],
@@ -175,8 +174,10 @@ class Detector():
         #         line_thickness=5,
         #         min_score_thresh=thresh)
 
-        plt.figure(figsize=IMAGE_SIZE)
+        self.TARGET_DIR = '/home/benno/experiments/hsr/surface_decluttering/isolated_objects_v2/'
+        plt.figure()
         plt.imshow(image_np)
+        plt.savefig(self.TARGET_DIR + 'object_classification_' + str(file_number).zfill(3))
         plt.show()
 
         return output_dict, image_np

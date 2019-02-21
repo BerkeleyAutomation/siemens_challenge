@@ -339,14 +339,21 @@ class Robot_Actions():
             grasp_angle_hsr = grasp_angle_dexnet
         return grasp_angle_hsr
 
-    def move_base(self, x,y,yaw):
+    def move_base(self, x,y,yaw, start=False):
         base_position_map_frame = self.robot.omni_base.get_pose()
         difference_x = x - base_position_map_frame.pos.x
         difference_y = y - base_position_map_frame.pos.y
         try:
+            if start:
+                self.robot.omni_base.go_abs(base_position_map_frame.pos.x + difference_x / 2, base_position_map_frame.pos.y + difference_y / 2, np.pi/2, 0)
             self.robot.omni_base.go_abs(base_position_map_frame.pos.x + difference_x / 2, base_position_map_frame.pos.y + difference_y / 2, yaw, 0)
             self.robot.omni_base.go_abs(base_position_map_frame.pos.x + difference_x, base_position_map_frame.pos.y + difference_y, yaw, 0)
         except:
+            base_position_map_frame = self.robot.omni_base.get_pose()
+            difference_x = x - base_position_map_frame.pos.x
+            difference_y = y - base_position_map_frame.pos.y
+            if start:
+                self.robot.omni_base.go_abs(base_position_map_frame.pos.x + difference_x / 3, base_position_map_frame.pos.y + difference_y / 3, np.pi/2, 0)
             self.robot.omni_base.go_abs(base_position_map_frame.pos.x + difference_x / 3, base_position_map_frame.pos.y + difference_y / 3, yaw, 0)
             self.robot.omni_base.go_abs(base_position_map_frame.pos.x + difference_x * 2 / 3, base_position_map_frame.pos.y + difference_y * 2 / 3, yaw, 0)
             self.robot.omni_base.go_abs(base_position_map_frame.pos.x + difference_x, base_position_map_frame.pos.y + difference_y, yaw, 0)
@@ -362,10 +369,9 @@ class Robot_Actions():
         self.move_base(base_position_map_frame.pos.x + difference_x, base_position_map_frame.pos.y + difference_y, euler_angles[2])
 
     def go_to_start_pose(self):
-        start_start = time.time()
         base_pose = self.robot.omni_base.get_pose()
         if abs(base_pose.pos.x) >= 0.02 or abs(base_pose.pos.y) >= 0.02 or base_pose.ori.w <= 0.95:
-            self.move_base(0,0,0)
+            self.move_base(0,0,0, start=True)
         self.robot.whole_body.move_to_joint_positions({'arm_flex_joint': -0.005953039901891888,
                                         'arm_lift_joint': 3.5673664703075522e-06,
                                         'arm_roll_joint': -1.6400026753088877,
@@ -373,8 +379,6 @@ class Robot_Actions():
                                         'head_tilt_joint': -1.3270548266651048,
                                         'wrist_flex_joint': -1.570003402348724,
                                         'wrist_roll_joint': 0})
-        start_end = time.time()
-        print('Go to start pose took %.2f seconds' %(start_end - start_start))
 
     def go_to_grasp_pose(self, grasp_angle_hsr):
         self.robot.open_gripper()
@@ -469,7 +473,6 @@ class Robot_Actions():
 
 
     def execute_2DOF_grasp(self, grasp_center, grasp_depth_m, grasp_angle_dexnet, grasp_width, grasp_height_offset, d_img, object_label):
-        print('Executing decluttering for object in class %i' %(object_label))
         grasp_start = time.time()
         grasp_angle_hsr = self.transform_dexnet_angle(grasp_angle_dexnet)
         actual_grasp_center = self.get_actual_grasp_center(grasp_angle_hsr)
@@ -489,11 +492,13 @@ class Robot_Actions():
         self.robot.close_gripper()
         self.robot.whole_body.move_to_joint_positions({'arm_lift_joint': z + 0.3})
         grasp_end = time.time()
-        print('Grasping took %.2f seconds' %(grasp_end - grasp_start))
+        self.grasp_time = grasp_end - grasp_start
         self.drop_object_in_bin(object_label)
         drop_end = time.time()
-        print('Dropping into bin took %.2f seconds' %(drop_end - grasp_end))
+        self.drop_time = drop_end - grasp_end
         self.go_to_start_pose()
+        self.go_to_start_time = time.time() - drop_end
+        return self.grasp_time, self.drop_time, self.go_to_start_time
 
 
     def l_singulate(self, cm, dir_vec, d_img):
