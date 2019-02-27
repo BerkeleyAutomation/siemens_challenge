@@ -81,6 +81,7 @@ class SurfaceDeclutter():
             last_file_number = last_added_file[-7:-4]
             self.new_file_number = int(last_file_number) + 1
         self.init_time = init_end-init_start
+        print('Start with ID %i' %(self.new_file_number))
 
     def run_grasp_gqcnn(self, c_img, d_img, object_label):
         plan_start = time.time()
@@ -365,6 +366,29 @@ class SurfaceDeclutter():
                     self.new_file_number += 1
                     return number_failed
 
+    def quantify_sensor_noise(self):
+        d_img_array = np.empty((10,480,640))
+        for idx in xrange(0,10):
+            time.sleep(2)
+            c_img, d_img = self.read_RGBD_image()
+            while c_img is None or d_img is None:
+                c_img, d_img = self.read_RGBD_image()
+            print(d_img.shape)
+            d_img_array[idx] = d_img
+        std = np.std(d_img_array, axis=0)
+        std[std > 60] = 0
+        np.save('/home/benno/sensor_noise_hsr_std.npy', std)
+        std[std == 0] = None
+        plt.figure()
+        for p in xrange(0,5):
+            mean = np.nanmean(std[10+p*60:70+p*60,:], axis=0)
+            plt.subplot(5,1,p+1)
+            plt.plot(mean)
+        plt.show()
+        plt.imshow(std)
+        plt.show()
+
+
 
 
 
@@ -375,7 +399,7 @@ if __name__ == "__main__":
     #    print('Starting new run with %d fails in a row now' %(number_failed))
         # rospy.spin()
         number_failed = task.segment(number_failed)
-        file = open('/home/benno/experiments/hsr/surface_decluttering/isolated_objects_v1.txt', 'a')
+        file = open('/home/benno/experiments/hsr/surface_decluttering/isolated_objects_v2.txt', 'a')
         file.write('\r\nTrial No. ' + str(task.new_file_number - 1) + ' ' +
                     'Initialization: ' + str(round(task.init_time,2)) + 's: ' +
                     'Read images:' + str(round(task.read_images_time,2)) + 's ' +
@@ -398,3 +422,5 @@ if __name__ == "__main__":
     #    number_failed = 3
     #    del task
     print('No objects in sight, surface decluttered.')
+    
+    #task.quantify_sensor_noise()
