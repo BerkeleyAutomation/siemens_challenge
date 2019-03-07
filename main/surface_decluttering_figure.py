@@ -40,13 +40,106 @@ from hsr_core.sensors import RGBD
 import tf2_ros
 
 import geometry_msgs
-from visualization import Visualizer2D as vis
+
 
 
 
 img = importlib.import_module(cfg.IMG_MODULE)
 ColorImage = getattr(img, 'ColorImage')
 BinaryImage = getattr(img, 'BinaryImage')
+
+
+def plot_grasp(grasp, width=None, color='r', arrow_len=4, arrow_head_len=2, arrow_head_width=3,
+          arrow_width=1, jaw_len=3, jaw_width=1.0,
+          grasp_center_size=1, grasp_center_thickness=2.5,
+          grasp_center_style='+', grasp_axis_width=1,
+          grasp_axis_style='--', line_width=1.0, show_center=True, show_axis=False, scale=1.0):
+    """
+    Plots a 2D grasp with arrow and jaw style using matplotlib
+
+    Parameters
+    ----------
+    grasp : :obj:`Grasp2D`
+        2D grasp to plot
+    width : float
+        width, in pixels, of the grasp (overrides Grasp2D.width_px)
+    color : :obj:`str`
+        color of plotted grasp
+    arrow_len : float
+        length of arrow body
+    arrow_head_len : float
+        length of arrow head
+    arrow_head_width : float
+        width of arrow head
+    arrow_width : float
+        width of arrow body
+    jaw_len : float
+        length of jaw line
+    jaw_width : float
+        line width of jaw line
+    grasp_center_thickness : float
+        thickness of grasp center
+    grasp_center_style : :obj:`str`
+        style of center of grasp
+    grasp_axis_width : float
+        line width of grasp axis
+    grasp_axis_style : :obj:`str`
+        style of grasp axis line
+    show_center : bool
+        whether or not to plot the grasp center
+    show_axis : bool
+        whether or not to plot the grasp axis
+    """
+    # set vars for suction
+    skip_jaws = False
+    if not hasattr(grasp, 'width'):
+        grasp_center_style = '.'
+        grasp_center_size = 25
+        plt.scatter(grasp.center.x, grasp.center.y, c=color, marker=grasp_center_style, s=scale * grasp_center_size)
+        return
+
+    # plot grasp center
+    if show_center:
+        plt.plot(grasp.center.x, grasp.center.y, c=color, marker=grasp_center_style, mew=scale * grasp_center_thickness,
+                 ms=scale * grasp_center_size)
+    if skip_jaws:
+        return
+
+    # compute axis and jaw locations
+    axis = grasp.axis
+    width_px = width
+    if width_px is None and hasattr(grasp, 'width_px'):
+        width_px = grasp.width_px
+    g1 = grasp.center.data - (float(width_px) / 2) * axis
+    g2 = grasp.center.data + (float(width_px) / 2) * axis
+    g1p = g1 - scale * arrow_len * axis  # start location of grasp jaw 1
+    g2p = g2 + scale * arrow_len * axis  # start location of grasp jaw 2
+
+    # plot grasp axis
+    if show_axis:
+        plt.plot([g1[0], g2[0]], [g1[1], g2[1]], color=color, linewidth=scale * grasp_axis_width,
+                 linestyle=grasp_axis_style)
+
+    # direction of jaw line
+    jaw_dir = scale * jaw_len * np.array([axis[1], -axis[0]])
+
+    # length of arrow
+    alpha = scale * (arrow_len - arrow_head_len)
+
+    # plot first jaw
+    g1_line = np.c_[g1p, g1 - scale * arrow_head_len * axis].T
+    plt.arrow(g1p[0], g1p[1], alpha * axis[0], alpha * axis[1], width=scale * arrow_width,
+              head_width=scale * arrow_head_width, head_length=scale * arrow_head_len, fc=color, ec=color)
+    jaw_line1 = np.c_[g1 + jaw_dir, g1 - jaw_dir].T
+
+    plt.plot(jaw_line1[:, 0], jaw_line1[:, 1], linewidth=scale * jaw_width, c=color)
+
+    # plot second jaw
+    g2_line = np.c_[g2p, g2 + scale * arrow_head_len * axis].T
+    plt.arrow(g2p[0], g2p[1], -alpha * axis[0], -alpha * axis[1], width=scale * arrow_width,
+              head_width=scale * arrow_head_width, head_length=scale * arrow_head_len, fc=color, ec=color)
+    jaw_line2 = np.c_[g2 + jaw_dir, g2 - jaw_dir].T
+    plt.plot(jaw_line2[:, 0], jaw_line2[:, 1], linewidth=scale * jaw_width, c=color)
 
 
 class SurfaceDeclutter():
@@ -61,7 +154,14 @@ class SurfaceDeclutter():
 
         # model_path = 'main/model/object_recognition_100_objects_inference_graph.pb'
         # model_path = 'main/model/real_on_real/output_inference_graph.pb'
-        model_path = '/nfs/diskstation/ajaytanwani/trained_models/real_on_real_hsr_100_objects/output_inference_graph.pb'
+        # model_path = '/nfs/diskstation/ajaytanwani/trained_models/real_on_real_hsr_100_objects/output_inference_graph.pb'
+        # model_path = '/nfs/diskstation/ajaytanwani/trained_models/sim_then_labeled_dann_on_real_fpn_100_objects/output_inference_graph.pb'
+
+        # model_path = '/nfs/diskstation/ajaytanwani/trained_models/real_on_real_fpn_0.7_100_objects/output_inference_graph.pb'
+
+        # model_path = '/nfs/diskstation/ajaytanwani/trained_models/dior_adda_100_objects/output_inference_graph.pb'
+        model_path = '/nfs/diskstation/ajaytanwani/trained_models/dior_dann_100_objects/output_inference_graph.pb'
+
         label_map_path = 'main/model/real_on_real/object-detection.pbtxt'
         self.det = Detector(model_path, label_map_path)
         self.cam = RGBD()
@@ -76,6 +176,7 @@ class SurfaceDeclutter():
 
         from gqcnn.grasping import RobustGraspingPolicy, CrossEntropyRobustGraspingPolicy, RgbdImageState, FullyConvolutionalGraspingPolicyParallelJaw, FullyConvolutionalGraspingPolicySuction
         from gqcnn.utils import GripperMode, NoValidGraspsException
+        from visualization import Visualizer2D as vis
 
         segmask_filename = None
         camera_intr_filename = None
@@ -203,7 +304,7 @@ class SurfaceDeclutter():
         grasp_width = action.grasp.width
 
         # ignore corrupted depth images
-        if 0.7 < grasp_depth_m < 1.05:
+        if 0.7 < grasp_depth_m < 1.55:
             pass
         else:
             print('invalid depth image')
@@ -230,9 +331,7 @@ class SurfaceDeclutter():
         if policy_config['vis']['final_grasp'] and False:
             vis.figure(size=(40,40))
             vis.subplot(1,2,1)
-            vis.imshow(rgbd_im.depth,
-                       vmin=policy_config['vis']['vmin'],
-                       vmax=policy_config['vis']['vmax'])
+            vis.imshow(rgbd_im.depth, vmin=policy_config['vis']['vmin'], vmax=policy_config['vis']['vmax'])
             vis.grasp(action.grasp, scale=4.5, show_center=False, show_axis=True)
             vis.title('Planned grasp at depth {0:.3f}m with Q={1:.3f}'.format(action.grasp.depth, action.q_value))
 
@@ -258,8 +357,8 @@ class SurfaceDeclutter():
         d_img[:, bbox.xmax:] = 0
         d_img[:bbox.ymin, :] = 0
         d_img[bbox.ymax:, :] = 0
-        plt.imshow(d_img)
-        plt.show()
+        # plt.imshow(d_img)
+        # plt.show()
         return d_img
 
     def execute_gqcnn(self, grasp_center, grasp_angle, depth_image_mm):
@@ -324,20 +423,52 @@ class SurfaceDeclutter():
 
                 actions_list = []
                 for target_id, target_bbox in enumerate(bboxes):
-                    d_img_mask = self.focus_on_target_zone(d_img, target_bbox)
+                    d_img_mask = self.focus_on_target_zone(deepcopy(d_img), target_bbox)
                     depth_image_m = np.asarray(d_img_mask[:,:])
                     # depth_image_m = depth_image_mm/1000
                     # import ipdb; ipdb.set_trace()
                     action = self.run_grasp_gqcnn(vis_util_image_rgb, depth_image_m, 0, target_bbox.label)
                     actions_list.append(action)
-                    import ipdb; ipdb.set_trace()
+                    # import ipdb; ipdb.set_trace()
                     print (target_id,target_bbox.label)
+                    # if target_id == 2:
+                    #     break
 
-                vis.imshow(col_img)
-                vis.grasp(action.grasp, scale=4.5, show_center=True, show_axis=True)
-                vis.title('Planned grasp at depth {0:.3f}m with Q={1:.3f}'.format(action.grasp.depth, action.q_value))
+
+                # vis.grasp(action.grasp, scale=4.5, show_center=False, show_axis=True)
+                # vis.title('Planned grasp at depth {0:.3f}m with Q={1:.3f}'.format(action.grasp.depth, action.q_value))
+                #
+                # vis.subplot(1, 2, 2)
+                # vis.imshow(rgbd_im.color)
+                # vis.grasp(action.grasp, scale=4.5, show_center=True, show_axis=True)
+                # vis.title('Planned grasp at depth {0:.3f}m with Q={1:.3f}'.format(action.grasp.depth, action.q_value))
                 # vis.savefig(TARGET_DIR + 'final_grasp_' + str(new_file_number).zfill(3))
-                vis.show()
+                # vis.show()
+
+
+                # import ipdb; ipdb.set_trace()
+                TARGET_DIR = '/home/ajaytanwani/PycharmProjects/siemens_challenge/'
+                plt.figure(figsize=(5,5))
+                # plt.imshow(cv2.cvtColor(c_img, cv2.COLOR_BGR2RGB))
+                plt.imshow(vis_util_image)
+
+                for action_id in range(len(actions_list)):
+                    # import ipdb; ipdb.set_trace()
+                    if actions_list[action_id] is not 1:
+                        plot_grasp(actions_list[action_id].grasp, scale=2.5, show_center=True, show_axis=True, arrow_len=6, arrow_head_len=4, arrow_head_width=1, arrow_width=1, jaw_len=4.0, jaw_width=1.0)
+                    # vis.title('Planned grasp at depth {0:.3f}m with Q={1:.3f}'.format(act.grasp.depth, act.q_value))
+                    plt.hold(True)
+                # vis.hold(True)
+                plt.axis('off')
+                plt.tick_params(axis='both', left='off', top='off', right='off', bottom='off', labelleft='off',
+                                labeltop='off', labelright='off', labelbottom='off')
+                # plt.savefig(TARGET_DIR + c_img_filename + '_final_grasp.png', dpi=100, bbox_inches='tight', pad_inches=0.0)
+                plt.savefig(TARGET_DIR + c_img_filename.split('/')[1] + '_final_grasp.eps', format='eps', dpi=300)
+
+                import ipdb;
+                ipdb.set_trace()
+
+                plt.show()
 
                     # return number_failed
 
@@ -373,9 +504,22 @@ class SurfaceDeclutter():
 
 if __name__ == "__main__":
 
-    for iter in xrange(3,4):
-        depth_im_filename = os.path.join('hsr_test/depth_raw_' + str(iter).zfill(4) + '.npy')
-        rgb_im_filename = os.path.join('hsr_test/rgb_raw_' + str(iter).zfill(4) + '.png')
+    # plt.figure(figsize=(10, 10))
+    # plt.imshow(inference_result['depth_image'], vmin=0.6, vmax=0.9)
+    # plot_grasp(inference_result, scale=2.5, show_center=False, show_axis=True)
+    # plt.title('Planned grasp on depth (Q=%.3f)' % (inference_result['q_value']))
+
+
+    # for iter in xrange(3,4):
+    #     depth_im_filename = os.path.join('hsr_test/depth_raw_' + str(iter).zfill(4) + '.npy')
+    #     rgb_im_filename = os.path.join('hsr_test/rgb_raw_' + str(iter).zfill(4) + '.png')
+
+
+
+    image_ids=[186,147]
+    for iter in xrange(2):
+        depth_im_filename = os.path.join('hsrsimtest/depth_' + str(image_ids[iter]) + '.npy')
+        rgb_im_filename = os.path.join('hsrsimtest/rgb_' + str(image_ids[iter]) + '.png')
 
         task = SurfaceDeclutter()
 
