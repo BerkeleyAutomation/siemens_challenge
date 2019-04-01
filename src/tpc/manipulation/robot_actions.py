@@ -330,9 +330,7 @@ class Robot_Actions():
         #self.deposit_obj_fake_ar(class_num % 4)
 
     def transform_dexnet_angle(self, grasp_angle_dexnet):
-        # rgbd camera is rotated by 0.32 radian, need to compensate that in angle
-        grasp_angle_dexnet -= 0.32
-        # rotate angle by 180 degrees if dexnet gives angle out of bound for hsr
+        # rotate angle by 180 degrees if dexnet gives angle out of bound for hsr joint
         if grasp_angle_dexnet < -1.92:
             grasp_angle_hsr = grasp_angle_dexnet + np.pi
         else:
@@ -340,6 +338,12 @@ class Robot_Actions():
         return grasp_angle_hsr
 
     def move_base(self, x,y,yaw, start=False):
+        ''' Why the start flag: Placing the bins behind the robot results
+        in a 180 degrees rotation to put object into bins. When returning
+        to the start pose, another 180 degrees rotation is necessary which
+        caused problems for the robot for some unknown reason. Thus, we
+        split this rotation into two 90 degrees rotations to avoid such problems.
+        '''
         base_position_map_frame = self.robot.omni_base.get_pose()
         difference_x = x - base_position_map_frame.pos.x
         difference_y = y - base_position_map_frame.pos.y
@@ -492,7 +496,7 @@ class Robot_Actions():
         z = self.adjust_z_based_on_grasp_width(z, grasp_width)
         self.robot.whole_body.move_to_joint_positions({'arm_lift_joint': z})
         self.robot.close_gripper()
-        self.robot.whole_body.move_to_joint_positions({'arm_lift_joint': z + 0.3})
+        self.robot.whole_body.move_to_joint_positions({'arm_lift_joint': z + 0.25})
         grasp_end = time.time()
         self.grasp_time = grasp_end - grasp_start
         self.drop_object_in_bin(object_label)
