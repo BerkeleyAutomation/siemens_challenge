@@ -253,7 +253,7 @@ class SurfaceDeclutter():
         #self.execute_gqcnn(grasp_center, grasp_angle, d_img*1000)
 
         # execute 2DOF grasp
-        self.execute_gqcnn_2DOF(grasp_center, grasp_depth_m, grasp_angle, grasp_width, grasp_height_offset, d_img*1000, object_label)
+        #self.execute_gqcnn_2DOF(grasp_center, grasp_depth_m, grasp_angle, grasp_width, grasp_height_offset, d_img*1000, object_label)
         return 1
 
     def grasp_all(self, c_img, d_img, bboxes):
@@ -475,6 +475,8 @@ class SurfaceDeclutter():
         c_img, d_img = self.read_RGBD_image()
         while c_img is None or d_img is None:
             c_img, d_img = self.read_RGBD_image()
+        plt.imshow(d_img)
+        plt.show()
         read_img_end = time.time()
         self.read_images_time = read_img_end - read_img_start
         rgb_image = cv2.cvtColor(c_img, cv2.COLOR_BGR2RGB)
@@ -579,7 +581,7 @@ if __name__ == "__main__":
             task.grasp_time = 0
             task.drop_time = 0
             task.go_to_start_time = 0
-
+        break
         #task.declutter()
     #    number_failed = 3
     #    del task
