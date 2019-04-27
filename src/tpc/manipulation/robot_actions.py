@@ -330,7 +330,8 @@ class Robot_Actions():
         #self.deposit_obj_fake_ar(class_num % 4)
 
     def transform_dexnet_angle(self, grasp_angle_dexnet):
-        # rotate angle by 180 degrees if dexnet gives angle out of bound for hsr joint
+        # HSR specific!
+        # rotate angle by 180 degrees if dexnet gives angle out hsr joint limits: [-1.919-3.665]rad
         if grasp_angle_dexnet < -1.92:
             grasp_angle_hsr = grasp_angle_dexnet + np.pi
         else:
@@ -338,7 +339,13 @@ class Robot_Actions():
         return grasp_angle_hsr
 
     def move_base(self, x,y,yaw, start=False):
-        ''' Why the start flag: Placing the bins behind the robot results
+        '''
+        The HSR robot is very sensitive wrt base movement. As soon as it needs to move more than
+        30cm the system breaks down. Therefore the base motion is divided into 2 equal parts to
+        move in smaller steps. If that still failes, we move the remaining distance in 3 steps
+        (part after except:)
+
+        Why the start flag: Placing the bins behind the robot results
         in a 180 degrees rotation to put object into bins. When returning
         to the start pose, another 180 degrees rotation is necessary which
         caused problems for the robot for some unknown reason. Thus, we
@@ -365,6 +372,11 @@ class Robot_Actions():
 
 
     def adjust_grasp_center(self, desired_grasp_center, actual_grasp_center):
+        '''
+        With a predefined manipulator movement, the grasp center of the robot (actual_grasp_center) is fixed 
+        without base movement. This function moves the base such that this actual grasp center is aligned
+        with the desired grasp center
+        '''
         difference_x = desired_grasp_center.pose.position.x - actual_grasp_center.pose.position.x
         difference_y = desired_grasp_center.pose.position.y - actual_grasp_center.pose.position.y
         base_position_map_frame = self.robot.omni_base.get_pose()
@@ -373,6 +385,10 @@ class Robot_Actions():
         self.move_base(base_position_map_frame.pos.x + difference_x, base_position_map_frame.pos.y + difference_y, euler_angles[2])
 
     def go_to_start_pose(self):
+        '''
+        Drive the robot to the origin of the map frame and move joints and camera such that
+        it can see the area in front of it.
+        '''
         base_pose = self.robot.omni_base.get_pose()
         if abs(base_pose.pos.x) >= 0.02 or abs(base_pose.pos.y) >= 0.02 or base_pose.ori.w <= 0.95:
             self.move_base(0,0,0, start=True)
@@ -385,6 +401,10 @@ class Robot_Actions():
                                         'wrist_roll_joint': 0})
 
     def go_to_grasp_pose(self, grasp_angle_hsr):
+        '''
+        Move the manipulator arm to the predefined grasp pose. After this
+        we only change the gripper height and rotation. (Reachable cyllinder principle)
+        '''
         self.robot.open_gripper()
         self.robot.whole_body.move_to_joint_positions({'arm_roll_joint': -0.04,
                                         'arm_lift_joint': 0.25,
@@ -399,6 +419,9 @@ class Robot_Actions():
         self.robot.open_gripper()
 
     def get_frame_origin(self, frame_name):
+        '''
+        Returns the origin of a desired frame as coords in the map frame.
+        '''
         pose = geometry_msgs.msg.PoseStamped()
         pose.header.stamp = rospy.Time.now()
         pose.header.frame_id = frame_name
@@ -410,6 +433,12 @@ class Robot_Actions():
         return pose_transformed
 
     def get_actual_grasp_center(self, grasp_angle_hsr):
+        '''
+        HSR specific.
+        With the chosen predefined manipulator arm movement, the resulting grasp center
+        is fixed wrt the base. This function transforms the actual grasp center into
+        the map frame.
+        '''
         rotation_axis_y = 0.079
         rotation_axis_x = 0.472
         offset_grasp_to_rotational_axis = 0.0115
@@ -426,8 +455,21 @@ class Robot_Actions():
         return pose_transformed
 
     def compute_z_value(self, desired_grasp_center, grasp_height_offset):
-        # z value is the distance between the floor and the middle of the gripper
-        # the new depth sampling from gqcnn outputs the desired grasp on the object surface, i.e. on top of the object. Thus, we lower it by offset_from_object_surface
+        '''
+        The z value is the distance between the floor and the middle of the gripper tips.
+        The new depth sampling from gqcnn outputs the desired grasp on the object surface,
+        i.e. on top of the object. Thus, we lower it by offset_from_object_surface
+        With the new image grasp sampler this lowering is deprecated and can be set to 0
+        because the new image grasp sampler already accounts for this and transforms the 
+        desired grasp center into a lowered grasp center.
+
+        To avoid damage, the predefined gripper movement is calibrated such that with a 
+        height of 0, the gripper will still be 5mm above the ground, therefore we subtract
+        this 'floor_z_value_in_map_frame'.
+
+        Since we want the middle of the finger tips at the grasp center point, we subtract
+        half the height of the finger tips called 'gripper_height'
+        '''
         offset_from_object_surface = grasp_height_offset
         floor_z_value_in_map_frame = 0.005
         gripper_height = 0.008
@@ -440,6 +482,11 @@ class Robot_Actions():
         return z
 
     def adjust_z_based_on_grasp_width(self, z, grasp_width):
+        '''
+        The HSR uses a semi-parallel jaw gripper, this means that the finger tip
+        height changes for different grasping widths. This function approximates
+        this height to grasping width relation and returns the adapted height z
+        '''
         if grasp_width <= 0.02:
             adjustment = 0.016 + 0.004 * (0.02 - grasp_width) / 0.02
         elif 0.02 < grasp_width <= 0.09:
@@ -461,6 +508,16 @@ class Robot_Actions():
         return img
 
     def check_if_object_grasped_handcam(self):
+        '''
+        This function uses the hand camera and checks the pixels in a window
+        around the grasp center for a completely closed gripper. If the 
+        number of black pixels is higher than a threshold of 15000, the windw
+        consists of the closed gripper and not an object in between, so it 
+        says no object has been grasped.
+
+        This method is not used at the moment because for small and deformable
+        objects it will output that no object has been grasped which is wrong.
+        '''
         handcam_image = self.read_handcamera_RGB()
         #import matplotlib.pyplot as plt
         #plt.imshow(handcam_image)
@@ -470,6 +527,14 @@ class Robot_Actions():
         return count_black_pixel < 15000
 
     def check_if_object_grasped(self):
+        '''
+        This function checks whether or not the finger tip distance is less than
+        3.5cm (which is the case when the gripper is closed) and based on this
+        returns whether or not an object has been grasped.
+
+        This method is not used at the moment because for small and deformable
+        objects it will output that no object has been grasped which is wrong.
+        '''
         left_distal_link_pose = self.get_frame_origin('hand_l_distal_link')
         right_distal_link_pose = self.get_frame_origin('hand_r_distal_link')
         distance_x = left_distal_link_pose.pose.position.x - right_distal_link_pose.pose.position.x
@@ -484,8 +549,11 @@ class Robot_Actions():
         actual_grasp_center = self.get_actual_grasp_center(grasp_angle_hsr)
         # use dummy direction because this function needs one as argument
         dir_vec = [0, 1]
-        # img_coords2pose exchanges x and y of grasp center, thus having to give them exchanged
+        # img_coords2pose exchanges x and y of grasp center, thus we have to give them exchanged
+        # img_coords2pose creates a new coord frame centered around the grasp center
         grasp_frame_name = self.img_coords2pose([grasp_center[1], grasp_center[0]], dir_vec, d_img, depth=grasp_depth_m*1000)
+        # Now we can read the desired grasp center in the map frame by transforming the origin
+        # of the frame centered around the grasp center into the map frame.
         desired_grasp_center = self.get_frame_origin(grasp_frame_name)
         #exit_var = raw_input()
         #if exit_var == 'exit':
@@ -496,12 +564,14 @@ class Robot_Actions():
         z = self.adjust_z_based_on_grasp_width(z, grasp_width)
         self.robot.whole_body.move_to_joint_positions({'arm_lift_joint': z})
         self.robot.close_gripper()
+        # lift the object
         self.robot.whole_body.move_to_joint_positions({'arm_lift_joint': z + 0.25})
         grasp_end = time.time()
         self.grasp_time = grasp_end - grasp_start
         self.drop_object_in_bin(object_label)
         drop_end = time.time()
         self.drop_time = drop_end - grasp_end
+        # go back to the start pose
         self.go_to_start_pose()
         self.go_to_start_time = time.time() - drop_end
         return self.grasp_time, self.drop_time, self.go_to_start_time
