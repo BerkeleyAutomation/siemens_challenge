@@ -54,7 +54,7 @@ CHECK_RANGE = 2
 #HSV PARAMETERS
 #cv2 range for HSV hue values
 HUE_RANGE = 180.0
-#cv2 range for HSV sat values
+#cv2 range for HSV sat valuesCOLOR
 SAT_RANGE = 255.0
 #cv2 range for HSV value values
 VALUE_RANGE = 255.0

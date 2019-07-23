@@ -460,8 +460,8 @@ class SurfaceDeclutter():
                     plt.hold(True)
                 # vis.hold(True)
                 plt.axis('off')
-                plt.tick_params(axis='both', left='off', top='off', right='off', bottom='off', labelleft='off',
-                                labeltop='off', labelright='off', labelbottom='off')
+                plt.tick_params(axis='both', left=False, top=False, right=False, bottom=False, labelleft=False,
+                                labeltop=True, labelright=False, labelbottom=False)
                 # plt.savefig(TARGET_DIR + c_img_filename + '_final_grasp.png', dpi=100, bbox_inches='tight', pad_inches=0.0)
                 plt.savefig(TARGET_DIR + c_img_filename.split('/')[1] + '_final_grasp.eps', format='eps', dpi=300)
 

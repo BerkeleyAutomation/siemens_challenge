@@ -108,7 +108,7 @@ class SurfaceDeclutter():
                                                 '..',
                                                 '..',
                                                 'gqcnn/cfg/examples/policy.yaml')
-       
+
         # read config
         config = YamlConfig(config_filename)
         inpaint_rescale_factor = config['inpaint_rescale_factor']
@@ -188,7 +188,6 @@ class SurfaceDeclutter():
             else:
                 raise ValueError('Invalid policy type: {}'.format(policy_type))
 
-        
         # query policy
         policy_start = time.time()
         action = policy(state)
